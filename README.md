@@ -22,6 +22,17 @@ is configured on the plugin's **Zabbix connection** tab.
 | **Zabbix** | 7.0 (JSON-RPC API) |
 | **License** | GPL-3.0-only |
 
+## Screenshots
+
+[![Command Center dashboard](docs/screenshots/command-center.png)](docs/screenshots/command-center.png)
+
+| Server inventory | Per-server statistics drawer |
+| --- | --- |
+| [![Server inventory](docs/screenshots/server-inventory.png)](docs/screenshots/server-inventory.png) | [![Per-server statistics drawer](docs/screenshots/server-statistics.png)](docs/screenshots/server-statistics.png) |
+
+These screenshots use the deterministic sample dataset, so no Zabbix connection is required
+to explore the interface.
+
 ## Release 0.8.1
 
 - Fixed stale SAMPLE-mode URL filters hiding live hosts after the sample dataset was
@@ -507,6 +518,7 @@ OpsBeacon/
 │   └── data/             Zabbix API, sample data and configuration
 ├── dist/                 Built plugin (module.js and source map)
 ├── img/                  Plugin logo
+├── docs/screenshots/     README preview images
 ├── preview/              Standalone preview harness (development only)
 ├── rollup.config.mjs     Build configuration
 ├── .github/workflows/    Release workflow (tag push)
