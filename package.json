@@ -1,0 +1,28 @@
+{
+  "name": "opsbeacon",
+  "version": "0.8.1",
+  "private": true,
+  "description": "OpsBeacon — Infrastructure Operations Command Center for Grafana and Zabbix",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eazt2020/OpsBeacon.git"
+  },
+  "homepage": "https://github.com/eazt2020/OpsBeacon#readme",
+  "bugs": {
+    "url": "https://github.com/eazt2020/OpsBeacon/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "preview": "esbuild src/preview.tsx --bundle --outfile=preview/preview.js --loader:.tsx=tsx --jsx=transform --minify"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.3.1",
+    "esbuild": "^0.28.2",
+    "rollup": "^4.34.8",
+    "rollup-plugin-esbuild": "^6.2.1"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "app",
+  "name": "Infrastructure Command Center",
+  "id": "acme-command-center-app",
+  "info": {
+    "keywords": ["zabbix", "infrastructure", "command-center", "operations"],
+    "description": "Operations wall for Zabbix: inventory health, availability, CPU/memory/disk/network utilisation, data freshness, top servers and active problems. Panels are driven directly by Zabbix host groups, host tags (environment, tier, business_service) and standard agent item keys. Every KPI count, Business Services row and DR Readiness row is click-through to a filterable server inventory scoped to that row, and every host square opens a per-server drawer with gauges, 24-hour history, filesystem usage and that host's problems. Includes a deterministic sample dataset, which can be enabled or disabled on the plugin's Zabbix connection tab; when disabled the dashboard is live-only and hides the SAMPLE switch. The live Zabbix server address, transport and authentication (API token or username/password) are also configured there, so the plugin can be installed on any Grafana server and point at a remote Zabbix. Read the Overview tab for the full panel-to-tag mapping.",
+    "author": {
+      "name": "Infrastructure Operations"
+    },
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "screenshots": [],
+    "version": "0.8.1",
+    "updated": "2026-11-03"
+  },
+  "includes": [
+    {
+      "type": "page",
+      "name": "Command Center",
+      "path": "/a/acme-command-center-app/command-center",
+      "role": "Viewer",
+      "addToNav": true,
+      "defaultNav": true
+    },
+    {
+      "type": "page",
+      "name": "Server inventory",
+      "path": "/a/acme-command-center-app/servers",
+      "role": "Viewer",
+      "addToNav": true
+    }
+  ],
+  "dependencies": {
+    "grafanaDependency": ">=11.6.0",
+    "plugins": []
+  },
+  "autoEnabled": true
+}
