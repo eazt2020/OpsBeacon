@@ -49,8 +49,55 @@ if (!selected.some((section) => section.version === version)) {
   process.exit(1);
 }
 
+// GitHub renders a newline inside a release description as a hard line break.
+// RELEASE_NOTES.md is hard-wrapped for reading in an editor, which would leave
+// a large empty gutter on every release page. Join the wrapped lines of each
+// paragraph and list item so GitHub wraps the text to the page width instead.
+function unwrap(lines) {
+  const blocks = [];
+  let buffer = '';
+  let inFence = false;
+  const flush = () => {
+    if (buffer) blocks.push(buffer);
+    buffer = '';
+  };
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    // Fenced code blocks must keep their own line breaks.
+    if (inFence) {
+      blocks.push(line);
+      if (/^\s*```/.test(line)) inFence = false;
+      continue;
+    }
+    if (/^\s*```/.test(line)) {
+      flush();
+      blocks.push(line);
+      inFence = true;
+      continue;
+    }
+    if (!line.trim()) {
+      flush();
+      if (blocks.length && blocks[blocks.length - 1] !== '') blocks.push('');
+      continue;
+    }
+    const text = line.trim();
+    const startsBlock = /^(?:[-*+] |\d+\. |> |#{1,6} |\|)/.test(text);
+    if (startsBlock) {
+      flush();
+      buffer = text;
+    } else if (!buffer) {
+      buffer = text;
+    } else {
+      buffer += ` ${text}`;
+    }
+  }
+  flush();
+  while (blocks.length && blocks[blocks.length - 1] === '') blocks.pop();
+  return blocks;
+}
+
 const body = selected
-  .map((section) => [`## ${section.version}`, ...section.body].join('\n').replace(/\s+$/, ''))
+  .map((section) => [`## ${section.version}`, ...unwrap(section.body)].join('\n'))
   .join('\n\n');
 
 process.stdout.write(`${body}\n`);
