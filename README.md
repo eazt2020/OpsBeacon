@@ -628,6 +628,10 @@ Pushing the tag runs `.github/workflows/release.yml`, which builds the plugin, p
 `acme-command-center-app-<version>.zip` and publishes a GitHub Release with that archive
 attached. The version in `src/plugin.json`, `package.json` and the tag must match.
 
+The release body is only the matching `## <version>` section of
+[RELEASE_NOTES.md](RELEASE_NOTES.md), so each release describes its own changes instead of
+repeating the full history; older sections stay in the file as the archive.
+
 ## Security
 
 - The plugin is **read-only**. It never acknowledges, closes or creates anything in Zabbix.

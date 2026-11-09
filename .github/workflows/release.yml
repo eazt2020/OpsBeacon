@@ -49,6 +49,25 @@ jobs:
           (cd release && zip -r "../acme-command-center-app-${VERSION}.zip" acme-command-center-app)
           sha256sum "acme-command-center-app-${VERSION}.zip" > "acme-command-center-app-${VERSION}.zip.sha256"
 
+      - name: Extract release notes for this version
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Publish only the section for this release. RELEASE_NOTES.md keeps the
+          # full history, but a release body repeating every earlier version is
+          # noise. The section runs from "## <version>" to the next "## ".
+          awk -v header="## ${VERSION}" '
+            $0 == header { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' RELEASE_NOTES.md | sed '/./,$!d' > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No '## ${VERSION}' section found in RELEASE_NOTES.md" >&2
+            exit 1
+          fi
+          echo "----- release body -----"
+          cat release-notes.md
+
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -59,4 +78,4 @@ jobs:
             "acme-command-center-app-${VERSION}.zip" \
             "acme-command-center-app-${VERSION}.zip.sha256" \
             --title "OpsBeacon ${VERSION}" \
-            --notes-file RELEASE_NOTES.md
+            --notes-file release-notes.md
