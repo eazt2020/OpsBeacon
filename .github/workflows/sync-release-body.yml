@@ -18,15 +18,16 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: Update the v0.9.40 release body
+      - name: Update the published release bodies
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          VERSION=0.9.40
-          awk -v header="## ${VERSION}" '
-            $0 == header { found = 1; next }
-            found && /^## / { exit }
-            found { print }
-          ' RELEASE_NOTES.md | sed '/./,$!d' > release-notes.md
-          gh release edit "v${VERSION}" --notes-file release-notes.md
+          for VERSION in 0.9.40 0.9.39; do
+            awk -v header="## ${VERSION}" '
+              $0 == header { found = 1; next }
+              found && /^## / { exit }
+              found { print }
+            ' RELEASE_NOTES.md | sed '/./,$!d' > release-notes.md
+            gh release edit "v${VERSION}" --notes-file release-notes.md
+          done
