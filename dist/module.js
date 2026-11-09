@@ -492,6 +492,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
         refreshSeconds: 60,
         sampleDataEnabled: true,
         defaultSource: "sample",
+        motion: "system",
         brandName: "OPSBEACON",
         brandTagline: "REAL-TIME INFRASTRUCTURE HEALTH",
         logoUrl: ""
@@ -559,6 +560,21 @@ System.register(['react', '@grafana/data'], (function (exports) {
         return `${parsed.origin}${path.replace(/\/{2,}/g, "/")}`;
       }
       const MAX_LOGO_CHARS = 4e5;
+      function normalizeMotion(value) {
+        return value === "full" || value === "reduced" ? value : "system";
+      }
+      function motionAllowed(preference) {
+        if (preference === "full") {
+          return true;
+        }
+        if (preference === "reduced") {
+          return false;
+        }
+        if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+          return true;
+        }
+        return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      }
       function normalizeBrandName(value) {
         const text = typeof value === "string" ? value.trim().slice(0, 40) : "";
         return text || DEFAULT_ZABBIX_CONFIG.brandName;
@@ -601,6 +617,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           // Enabled unless the stored setting is explicitly false.
           sampleDataEnabled: r.sampleDataEnabled !== false && r.sampleDataEnabled !== "false",
           defaultSource: r.defaultSource === "live" ? "live" : "sample",
+          motion: normalizeMotion(r.motion),
           brandName: normalizeBrandName(r.brandName),
           brandTagline: normalizeBrandTagline(r.brandTagline),
           logoUrl: normalizeLogoUrl(r.logoUrl)
@@ -623,6 +640,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           sampleDataEnabled: config.sampleDataEnabled,
           // Live-only mode cannot open on the sample dataset.
           defaultSource: config.sampleDataEnabled ? config.defaultSource : "live",
+          motion: normalizeMotion(config.motion),
           brandName: normalizeBrandName(config.brandName),
           brandTagline: normalizeBrandTagline(config.brandTagline),
           logoUrl: normalizeLogoUrl(config.logoUrl)
@@ -4534,14 +4552,15 @@ System.register(['react', '@grafana/data'], (function (exports) {
 @keyframes cc-drift-a { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(70px, 50px, 0) scale(1.05); } }
 @keyframes cc-drift-b { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(-70px, 50px, 0) scale(0.95); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .cc-app,
-  .cc-app *,
-  .cc-app *::before,
-  .cc-app *::after {
-    animation: none !important;
-    transition: none !important;
-  }
+/* Motion is decided in JavaScript (see motionAllowed in data/config.ts) so an
+   administrator can override a system prefers-reduced-motion setting for an
+   always-on wall display. Without the override class the animations run. */
+.cc-app.cc-motion-off,
+.cc-app.cc-motion-off *,
+.cc-app.cc-motion-off *::before,
+.cc-app.cc-motion-off *::after {
+  animation: none !important;
+  transition: none !important;
 }
 
 /* \u2500\u2500 Readability pass \u2014 match the Magic UI concept build \u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -4768,22 +4787,23 @@ System.register(['react', '@grafana/data'], (function (exports) {
   .cc-fs-mount { width: 44px; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cc-ticker-track,
-  .cc-modal-beam,
-  .cc-modal-aurora,
-  .cc-title,
-  .cc-srv-title,
-  .cc-modal-title,
-  .cc-gauge-fill,
-  .cc-usage-track > span { animation: none; }
-  .cc-spark-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
-  .cc-history-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
-  .cc-history-area { animation: none; opacity: 0.12; }
-  .cc-history-dots,
-  .cc-history-latest { animation: none; opacity: 1; }
-  .cc-history-latest > circle:first-child { animation: none; opacity: 0.35; }
-}
+/* Static fallbacks for entrance animations whose initial state is hidden; the
+   class is added when motion is disabled, whether by the system preference or
+   by the plugin's own Animations setting. */
+.cc-app.cc-motion-off .cc-ticker-track,
+.cc-app.cc-motion-off .cc-modal-beam,
+.cc-app.cc-motion-off .cc-modal-aurora,
+.cc-app.cc-motion-off .cc-title,
+.cc-app.cc-motion-off .cc-srv-title,
+.cc-app.cc-motion-off .cc-modal-title,
+.cc-app.cc-motion-off .cc-gauge-fill,
+.cc-app.cc-motion-off .cc-usage-track > span { animation: none; }
+.cc-app.cc-motion-off .cc-spark-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+.cc-app.cc-motion-off .cc-history-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+.cc-app.cc-motion-off .cc-history-area { animation: none; opacity: 0.12; }
+.cc-app.cc-motion-off .cc-history-dots,
+.cc-app.cc-motion-off .cc-history-latest { animation: none; opacity: 1; }
+.cc-app.cc-motion-off .cc-history-latest > circle:first-child { animation: none; opacity: 0.35; }
 `;
 
       const ESTATE_FROZEN_MINUTES = 15;
@@ -5368,6 +5388,9 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const [logoUrl, setLogoUrl] = useState(
           initialConfig ? initialConfig.logoUrl : DEFAULT_ZABBIX_CONFIG.logoUrl
         );
+        const [motion, setMotion] = useState(
+          initialConfig ? initialConfig.motion : DEFAULT_ZABBIX_CONFIG.motion
+        );
         const sourceTouched = useRef(false);
         const staleFiltersCleared = useRef(isStaleSampleLink(initialConfig));
         const [filters, setFilters] = useState(() => ({ ...ALL_FILTERS$2 }));
@@ -5385,6 +5408,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
             setBrandName(config.brandName);
             setBrandTagline(config.brandTagline);
             setLogoUrl(config.logoUrl);
+            setMotion(config.motion);
             if (!config.sampleDataEnabled) {
               sourceTouched.current = true;
               setSource("live");
@@ -5604,6 +5628,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           brandName,
           brandTagline,
           logoUrl,
+          motion,
           canGoLive,
           filters,
           setFilters,
@@ -5650,6 +5675,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           brandName,
           brandTagline,
           logoUrl,
+          motion,
           canGoLive,
           filters,
           setFilters,
@@ -5735,7 +5761,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           businessService: ALL$1,
           ...row.hostFilter || {}
         });
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-app" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { className: `cc-app${motionAllowed(motion) ? "" : " cc-motion-off"}` }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement(
           Header,
           {
             filters,
@@ -5935,6 +5961,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           brandName,
           brandTagline,
           logoUrl,
+          motion,
           canGoLive,
           filters,
           setFilters,
@@ -5976,7 +6003,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
         };
         const safeUnacknowledged = unacknowledgedProblems.length || 1;
         const maintenanceHosts = filteredHosts.filter((h) => h.maintenance);
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-app cc-dc" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { className: `cc-app cc-dc${motionAllowed(motion) ? "" : " cc-motion-off"}` }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement(
           Header,
           {
             filters,
@@ -6518,6 +6545,9 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const [logoUrl, setLogoUrl] = useState(
           initialConfig ? initialConfig.logoUrl : DEFAULT_ZABBIX_CONFIG.logoUrl
         );
+        const [motion, setMotion] = useState(
+          initialConfig ? initialConfig.motion : DEFAULT_ZABBIX_CONFIG.motion
+        );
         useEffect(() => {
           if (!canGoLive) {
             return;
@@ -6530,6 +6560,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
               setBrandName(config.brandName);
               setBrandTagline(config.brandTagline);
               setLogoUrl(config.logoUrl);
+              setMotion(config.motion);
             }
           }).catch(() => {
           });
@@ -6841,7 +6872,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           },
           "Next"
         )));
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-app cc-srv" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("style", null, SRV_CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), header, filterBar, source === "live" && liveState === "error" && live ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner" }, /* @__PURE__ */ React.createElement("strong", null, "ZABBIX UNREACHABLE"), /* @__PURE__ */ React.createElement("span", null, liveError || "Unable to reach the Zabbix API."), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { marginLeft: "auto" } }, "Showing last successful sync")) : null, body, activeHost ? /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { className: `cc-app cc-srv${motionAllowed(motion) ? "" : " cc-motion-off"}` }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("style", null, SRV_CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), header, filterBar, source === "live" && liveState === "error" && live ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner" }, /* @__PURE__ */ React.createElement("strong", null, "ZABBIX UNREACHABLE"), /* @__PURE__ */ React.createElement("span", null, liveError || "Unable to reach the Zabbix API."), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { marginLeft: "auto" } }, "Showing last successful sync")) : null, body, activeHost ? /* @__PURE__ */ React.createElement(
           HostDetailModal,
           {
             host: activeHost,
@@ -6911,6 +6942,19 @@ System.register(['react', '@grafana/data'], (function (exports) {
   background: var(--input-background, #111217);
   color: var(--text-color, #d8d9da);
   font-size: 14px;
+}
+/* Grafana's global stylesheet contains a select, input[type="file"] rule with
+   height: 4px and line-height: 4 (used for its file-input trick). It wins over
+   the natural height here, collapsing every select on this page to a sliver
+   with the option text clipped. Restore a normal control height and line box. */
+.cc-cfg select {
+  height: 36px;
+  padding: 0 9px;
+  line-height: normal;
+}
+.cc-cfg select option {
+  background: var(--input-background, #111217);
+  color: var(--text-color, #d8d9da);
 }
 .cc-cfg input[type="number"] {
   max-width: 140px;
@@ -7217,7 +7261,17 @@ System.register(['react', '@grafana/data'], (function (exports) {
             value: config.logoUrl.startsWith("data:") ? "" : config.logoUrl,
             onChange: (e) => patch({ logoUrl: e.target.value })
           }
-        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, config.logoUrl.startsWith("data:") ? "Currently using an uploaded image embedded in plugin settings. Enter a URL to replace it." : "An absolute http(s) URL to an image. Leave blank to use the default mark.")), /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", null, "Dashboard behaviour"), /* @__PURE__ */ React.createElement("label", { className: "inline", htmlFor: "cc-sample-data" }, /* @__PURE__ */ React.createElement(
+        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, config.logoUrl.startsWith("data:") ? "Currently using an uploaded image embedded in plugin settings. Enter a URL to replace it." : "An absolute http(s) URL to an image. Leave blank to use the default mark."), /* @__PURE__ */ React.createElement("label", { htmlFor: "cc-motion" }, "Animations"), /* @__PURE__ */ React.createElement(
+          "select",
+          {
+            id: "cc-motion",
+            value: config.motion,
+            onChange: (e) => patch({ motion: e.target.value })
+          },
+          /* @__PURE__ */ React.createElement("option", { value: "system" }, "Follow the system setting (recommended)"),
+          /* @__PURE__ */ React.createElement("option", { value: "full" }, "Always animate"),
+          /* @__PURE__ */ React.createElement("option", { value: "reduced" }, "Always reduce motion")
+        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, "Controls the aurora drift, LIVE PROBLEMS marquee, title shimmer, gauge and history animations. The system setting disables them when the browser reports", " ", /* @__PURE__ */ React.createElement("code", null, "prefers-reduced-motion"), ", which is common on Windows RDP sessions and desktops with animation effects turned off. Choose ", /* @__PURE__ */ React.createElement("strong", null, "Always animate"), " ", "for a wall display that must keep moving.")), /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", null, "Dashboard behaviour"), /* @__PURE__ */ React.createElement("label", { className: "inline", htmlFor: "cc-sample-data" }, /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "cc-sample-data",

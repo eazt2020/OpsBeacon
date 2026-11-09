@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GroupPanel, Header, Kpi, LiveProblemsTicker, MaintenanceTable, ProblemsTable } from './components';
 import { HostDetailModal } from './HostDetailModal';
-import { ZabbixConfig } from './data/config';
+import { motionAllowed, ZabbixConfig } from './data/config';
 import { CSS } from './styles';
 import type { Host, SeverityGroup } from './types';
 import { useOpsData } from './useOpsData';
@@ -23,6 +23,7 @@ export function DataCenterPage({ initialConfig }: { initialConfig?: ZabbixConfig
     brandName,
     brandTagline,
     logoUrl,
+    motion,
     canGoLive,
     filters,
     setFilters,
@@ -78,7 +79,7 @@ export function DataCenterPage({ initialConfig }: { initialConfig?: ZabbixConfig
   const maintenanceHosts = filteredHosts.filter((h) => h.maintenance);
 
   return (
-    <div className="cc-app cc-dc">
+    <div className={`cc-app cc-dc${motionAllowed(motion) ? '' : ' cc-motion-off'}`}>
       <style>{CSS}</style>
       <div className="cc-aurora a1" aria-hidden="true" />
       <div className="cc-aurora a2" aria-hidden="true" />

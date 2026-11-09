@@ -4,6 +4,31 @@ All notable changes to OpsBeacon are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.40] - 2026-11-09
+
+### Added
+
+- **Animations** setting on the Zabbix connection tab, under Branding: **Follow the system
+  setting** (default), **Always animate** or **Always reduce motion**. The setting controls
+  the aurora drift, LIVE PROBLEMS marquee, title shimmer, gauge fill and history-chart
+  entrance animations.
+
+### Fixed
+
+- Dashboard animations no longer disappear on installations whose browser reports
+  `prefers-reduced-motion: reduce`. The plugin previously disabled every animation with a
+  global CSS media query, so a production Grafana opened over Windows Remote Desktop (which
+  turns animation effects off by default) or on a managed desktop appeared completely
+  static, with no way to override it. Motion is now decided in JavaScript from the saved
+  preference; the default still follows the system setting, and **Always animate** re-enables
+  the animations for wall displays. The static fallbacks for the history charts and gauges
+  are still applied whenever motion is disabled.
+- The dropdowns on the **Zabbix connection** tab no longer collapse to a thin strip with the
+  selected value hidden. Grafana's global stylesheet contains a `select` rule with
+  `height: 4px` and `line-height: 4`; the page now restores a 36 px control height and normal
+  line box, matching the text inputs. This affects the Authentication, Animations and
+  Data mode selects.
+
 ## [0.9.39] - 2026-11-09
 
 ### Security

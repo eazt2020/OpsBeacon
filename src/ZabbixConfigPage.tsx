@@ -4,6 +4,7 @@ import {
   appSubUrl,
   DEFAULT_ZABBIX_CONFIG,
   loadZabbixConfig,
+  MotionPreference,
   normalizeConfig,
   saveZabbixConfig,
   testZabbixConnection,
@@ -73,6 +74,19 @@ const CFG_CSS = `
   background: var(--input-background, #111217);
   color: var(--text-color, #d8d9da);
   font-size: 14px;
+}
+/* Grafana's global stylesheet contains a select, input[type="file"] rule with
+   height: 4px and line-height: 4 (used for its file-input trick). It wins over
+   the natural height here, collapsing every select on this page to a sliver
+   with the option text clipped. Restore a normal control height and line box. */
+.cc-cfg select {
+  height: 36px;
+  padding: 0 9px;
+  line-height: normal;
+}
+.cc-cfg select option {
+  background: var(--input-background, #111217);
+  color: var(--text-color, #d8d9da);
 }
 .cc-cfg input[type="number"] {
   max-width: 140px;
@@ -515,6 +529,24 @@ export function ZabbixConfigPage({ plugin }: PluginConfigPageProps<AppPluginMeta
           {config.logoUrl.startsWith('data:')
             ? 'Currently using an uploaded image embedded in plugin settings. Enter a URL to replace it.'
             : 'An absolute http(s) URL to an image. Leave blank to use the default mark.'}
+        </p>
+
+        <label htmlFor="cc-motion">Animations</label>
+        <select
+          id="cc-motion"
+          value={config.motion}
+          onChange={(e) => patch({ motion: e.target.value as MotionPreference })}
+        >
+          <option value="system">Follow the system setting (recommended)</option>
+          <option value="full">Always animate</option>
+          <option value="reduced">Always reduce motion</option>
+        </select>
+        <p className="help">
+          Controls the aurora drift, LIVE PROBLEMS marquee, title shimmer, gauge and history
+          animations. The system setting disables them when the browser reports{' '}
+          <code>prefers-reduced-motion</code>, which is common on Windows RDP sessions and
+          desktops with animation effects turned off. Choose <strong>Always animate</strong>{' '}
+          for a wall display that must keep moving.
         </p>
       </fieldset>
 

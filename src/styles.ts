@@ -1926,14 +1926,15 @@ export const CSS = `
 @keyframes cc-drift-a { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(70px, 50px, 0) scale(1.05); } }
 @keyframes cc-drift-b { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(-70px, 50px, 0) scale(0.95); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .cc-app,
-  .cc-app *,
-  .cc-app *::before,
-  .cc-app *::after {
-    animation: none !important;
-    transition: none !important;
-  }
+/* Motion is decided in JavaScript (see motionAllowed in data/config.ts) so an
+   administrator can override a system prefers-reduced-motion setting for an
+   always-on wall display. Without the override class the animations run. */
+.cc-app.cc-motion-off,
+.cc-app.cc-motion-off *,
+.cc-app.cc-motion-off *::before,
+.cc-app.cc-motion-off *::after {
+  animation: none !important;
+  transition: none !important;
 }
 
 /* ── Readability pass — match the Magic UI concept build ───────
@@ -2160,20 +2161,21 @@ export const CSS = `
   .cc-fs-mount { width: 44px; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cc-ticker-track,
-  .cc-modal-beam,
-  .cc-modal-aurora,
-  .cc-title,
-  .cc-srv-title,
-  .cc-modal-title,
-  .cc-gauge-fill,
-  .cc-usage-track > span { animation: none; }
-  .cc-spark-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
-  .cc-history-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
-  .cc-history-area { animation: none; opacity: 0.12; }
-  .cc-history-dots,
-  .cc-history-latest { animation: none; opacity: 1; }
-  .cc-history-latest > circle:first-child { animation: none; opacity: 0.35; }
-}
+/* Static fallbacks for entrance animations whose initial state is hidden; the
+   class is added when motion is disabled, whether by the system preference or
+   by the plugin's own Animations setting. */
+.cc-app.cc-motion-off .cc-ticker-track,
+.cc-app.cc-motion-off .cc-modal-beam,
+.cc-app.cc-motion-off .cc-modal-aurora,
+.cc-app.cc-motion-off .cc-title,
+.cc-app.cc-motion-off .cc-srv-title,
+.cc-app.cc-motion-off .cc-modal-title,
+.cc-app.cc-motion-off .cc-gauge-fill,
+.cc-app.cc-motion-off .cc-usage-track > span { animation: none; }
+.cc-app.cc-motion-off .cc-spark-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+.cc-app.cc-motion-off .cc-history-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+.cc-app.cc-motion-off .cc-history-area { animation: none; opacity: 0.12; }
+.cc-app.cc-motion-off .cc-history-dots,
+.cc-app.cc-motion-off .cc-history-latest { animation: none; opacity: 1; }
+.cc-app.cc-motion-off .cc-history-latest > circle:first-child { animation: none; opacity: 0.35; }
 `;

@@ -23,6 +23,14 @@ export type ZabbixTransport = 'proxy' | 'direct';
 /** How the direct transport authenticates against Zabbix. */
 export type ZabbixAuthMethod = 'token' | 'credentials';
 
+/**
+ * Motion preference for the dashboard animations.
+ *   system  - follow the operating system / browser prefers-reduced-motion setting
+ *   full    - always animate, even when the system asks for reduced motion
+ *   reduced - never animate
+ */
+export type MotionPreference = 'system' | 'full' | 'reduced';
+
 export interface ZabbixConfig {
   /** How the browser reaches the Zabbix API. */
   transport: ZabbixTransport;
@@ -53,6 +61,12 @@ export interface ZabbixConfig {
   sampleDataEnabled: boolean;
   /** Data mode selected when the page is first opened. */
   defaultSource: 'sample' | 'live';
+  /**
+   * Dashboard motion. Defaults to 'system', which disables the animations when the
+   * browser reports prefers-reduced-motion (common on RDP sessions and managed
+   * desktops). 'full' overrides that for wall displays that must animate.
+   */
+  motion: MotionPreference;
   /** Brand shown in the Command Center and Server Inventory header. */
   brandName: string;
   /** Tagline shown after the brand name in the header eyebrow. */
@@ -76,6 +90,7 @@ export const DEFAULT_ZABBIX_CONFIG: ZabbixConfig = {
   refreshSeconds: 60,
   sampleDataEnabled: true,
   defaultSource: 'sample',
+  motion: 'system',
   brandName: 'OPSBEACON',
   brandTagline: 'REAL-TIME INFRASTRUCTURE HEALTH',
   logoUrl: '',
@@ -172,6 +187,28 @@ export function normalizeApiUrl(value: unknown, fallback: string = DEFAULT_ZABBI
 /** Hard cap for an embedded logo keeps plugin settings (and every page load) small. */
 export const MAX_LOGO_CHARS = 400_000;
 
+function normalizeMotion(value: unknown): MotionPreference {
+  return value === 'full' || value === 'reduced' ? value : 'system';
+}
+
+/**
+ * Whether the dashboard should run its animations. 'system' asks the browser,
+ * which is false on Windows RDP sessions and desktops with animation effects
+ * turned off. 'full' always animates; 'reduced' never does.
+ */
+export function motionAllowed(preference: MotionPreference | undefined): boolean {
+  if (preference === 'full') {
+    return true;
+  }
+  if (preference === 'reduced') {
+    return false;
+  }
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return true;
+  }
+  return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 function normalizeBrandName(value: unknown): string {
   const text = typeof value === 'string' ? value.trim().slice(0, 40) : '';
   return text || DEFAULT_ZABBIX_CONFIG.brandName;
@@ -220,6 +257,7 @@ export function normalizeConfig(raw: unknown): ZabbixConfig {
     // Enabled unless the stored setting is explicitly false.
     sampleDataEnabled: r.sampleDataEnabled !== false && r.sampleDataEnabled !== 'false',
     defaultSource: r.defaultSource === 'live' ? 'live' : 'sample',
+    motion: normalizeMotion(r.motion),
     brandName: normalizeBrandName(r.brandName),
     brandTagline: normalizeBrandTagline(r.brandTagline),
     logoUrl: normalizeLogoUrl(r.logoUrl),
@@ -243,6 +281,7 @@ export function toJsonData(config: ZabbixConfig): Record<string, unknown> {
     sampleDataEnabled: config.sampleDataEnabled,
     // Live-only mode cannot open on the sample dataset.
     defaultSource: config.sampleDataEnabled ? config.defaultSource : 'live',
+    motion: normalizeMotion(config.motion),
     brandName: normalizeBrandName(config.brandName),
     brandTagline: normalizeBrandTagline(config.brandTagline),
     logoUrl: normalizeLogoUrl(config.logoUrl),

@@ -11,7 +11,7 @@ import {
   UtilCard,
 } from './components';
 import { HostDetailModal } from './HostDetailModal';
-import { ZabbixConfig } from './data/config';
+import { motionAllowed, ZabbixConfig } from './data/config';
 import { matchesFilters } from './data/sampleData';
 import { CSS } from './styles';
 import { BusinessServiceRow, DrRow, Host, ResourceKey, SeverityGroup } from './types';
@@ -36,6 +36,7 @@ export function CommandCenterPage({ initialConfig }: { initialConfig?: ZabbixCon
     brandName,
     brandTagline,
     logoUrl,
+    motion,
     canGoLive,
     filters,
     setFilters,
@@ -147,7 +148,7 @@ export function CommandCenterPage({ initialConfig }: { initialConfig?: ZabbixCon
     });
 
   return (
-    <div className="cc-app">
+    <div className={`cc-app${motionAllowed(motion) ? '' : ' cc-motion-off'}`}>
       <style>{CSS}</style>
       <div className="cc-aurora a1" aria-hidden="true" />
       <div className="cc-aurora a2" aria-hidden="true" />

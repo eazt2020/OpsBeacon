@@ -2,7 +2,7 @@
 
 **Infrastructure Operations Command Center for Grafana and Zabbix**
 
-[![Version](https://img.shields.io/badge/version-0.9.39-blue.svg)](RELEASE_NOTES.md#0939)
+[![Version](https://img.shields.io/badge/version-0.9.40-blue.svg)](RELEASE_NOTES.md#0940)
 [![Grafana](https://img.shields.io/badge/Grafana-%E2%89%A511.6.0-orange.svg)](https://grafana.com)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0-red.svg)](https://www.zabbix.com)
 [![License](https://img.shields.io/badge/license-GPL--3.0--only-green.svg)](LICENSE)
@@ -17,7 +17,7 @@ is configured on the plugin's **Zabbix connection** tab.
 | --- | --- |
 | **Plugin ID** | `acme-command-center-app` |
 | **Display name** | Infrastructure Command Center |
-| **Version** | 0.9.39 |
+| **Version** | 0.9.40 |
 | **Grafana** | >= 11.6.0 |
 | **Zabbix** | 7.0 (JSON-RPC API) |
 | **License** | GPL-3.0-only |
@@ -412,10 +412,18 @@ organisation Admin is required (the plugin administration area needs `plugins:wr
 | **Live refresh interval** | 15 s – 1 h |
 | **Enable sample dataset** | Default on. When off, the dashboard is live-only and the SAMPLE switch is hidden. |
 | **Data mode when the page opens** | Sample dataset or live Zabbix; forced to live when sample data is disabled |
+| **Animations** | `Follow the system setting` (default), `Always animate` or `Always reduce motion` |
 
 **Save connection** stores the values in Grafana plugin settings for the organisation.
 **Test connection** calls `apiinfo.version` and counts monitored hosts with the form values.
 Signed-in Viewers receive the same settings (Viewers are granted `plugins.app:access`).
+
+**Animations** controls the aurora drift, LIVE PROBLEMS marquee, title shimmer, gauge fill
+and history-chart entrance animations. `Follow the system setting` disables them when the
+browser reports `prefers-reduced-motion: reduce`; Windows Remote Desktop sessions and
+desktops with animation effects turned off report that by default, which is why a
+production Grafana viewed over RDP can look static. Choose **Always animate** for a wall
+display that must keep moving regardless of the workstation setting.
 
 ### Live Zabbix data path — proxy transport (default)
 
@@ -610,9 +618,9 @@ OpsBeacon/
 Releases are cut from tags that start with `v`:
 
 ```bash
-npm version 0.9.39 --no-git-tag-version   # if the version changed
-git commit -am "Release 0.9.39"
-git tag -a v0.9.39 -m "OpsBeacon 0.9.39"
+npm version 0.9.40 --no-git-tag-version   # if the version changed
+git commit -am "Release 0.9.40"
+git tag -a v0.9.40 -m "OpsBeacon 0.9.40"
 git push origin main --tags
 ```
 

@@ -5,6 +5,8 @@ import {
   DEFAULT_ZABBIX_CONFIG,
   isGrafanaHosted,
   loadZabbixConfig,
+  motionAllowed,
+  MotionPreference,
   resolveSource,
   ZabbixConfig,
 } from './data/config';
@@ -326,6 +328,9 @@ export function ServerListPage({
   const [logoUrl, setLogoUrl] = useState(
     initialConfig ? initialConfig.logoUrl : DEFAULT_ZABBIX_CONFIG.logoUrl
   );
+  const [motion, setMotion] = useState<MotionPreference>(
+    initialConfig ? initialConfig.motion : DEFAULT_ZABBIX_CONFIG.motion
+  );
 
   useEffect(() => {
     if (!canGoLive) {
@@ -340,6 +345,7 @@ export function ServerListPage({
           setBrandName(config.brandName);
           setBrandTagline(config.brandTagline);
           setLogoUrl(config.logoUrl);
+          setMotion(config.motion);
         }
       })
       .catch(() => {
@@ -921,7 +927,7 @@ export function ServerListPage({
   );
 
   return (
-    <div className="cc-app cc-srv">
+    <div className={`cc-app cc-srv${motionAllowed(motion) ? '' : ' cc-motion-off'}`}>
       <style>{CSS}</style>
       <style>{SRV_CSS}</style>
       <div className="cc-aurora a1" aria-hidden="true" />

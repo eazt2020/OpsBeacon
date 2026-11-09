@@ -3,6 +3,25 @@
 Release notes for every published version, newest first. The detailed change history,
 including fixes not called out here, is in [CHANGELOG.md](CHANGELOG.md).
 
+## 0.9.40
+
+- **Dashboard animations now have an explicit setting.** The aurora drift, LIVE PROBLEMS
+  marquee, title shimmer, gauge fill and history-chart animations could appear completely
+  static on a production Grafana because the browser reported
+  `prefers-reduced-motion: reduce`. Windows Remote Desktop sessions and desktops with
+  animation effects turned off report that by default, and the plugin previously honoured it
+  with a global media query that nothing could override.
+- The **Zabbix connection** tab now has an **Animations** control under **Branding**:
+  **Follow the system setting** (default), **Always animate** and **Always reduce motion**.
+  Choose **Always animate** for a wall display that must keep moving; the default keeps the
+  accessibility behaviour for everyone else.
+- Static fallbacks for history charts and gauges still apply whenever motion is reduced, so
+  no chart is left hidden.
+- Fixed the **Zabbix connection** dropdowns: they no longer collapse to a thin strip with the
+  selected value hidden. Grafana's global stylesheet gives every `select` a 4 px height; the
+  page now restores a normal 36 px control height, so Authentication, Animations and
+  Data mode show their current value.
+
 ## 0.9.39
 
 - Security review fixes. **Server inventory CSV export** now neutralises spreadsheet formula
