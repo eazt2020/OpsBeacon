@@ -4,6 +4,24 @@ All notable changes to OpsBeacon are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.39] - 2026-11-09
+
+### Security
+
+- Server inventory CSV export is no longer vulnerable to spreadsheet formula injection.
+  Cells beginning with `=`, `+`, `-`, `@`, tab (`0x09`) or carriage return (`0x0D`) are
+  exported with a leading apostrophe. Hostnames, host groups, tags, OS, business service
+  and the latest problem text are all covered, so opening the export in Excel or Google
+  Sheets cannot execute a formula planted in Zabbix host metadata. Quoting and escaping of
+  commas, quotes and newlines is unchanged.
+- The Zabbix connection tab now shows a warning when a Direct endpoint resolves to plain
+  `http://` on a non-local host. In that configuration the API token or login password is
+  sent over the network in clear text; the warning points to `https://` or the Proxy
+  transport. Localhost, loopback and same-origin relative proxy paths are not flagged.
+- README security notes now spell out that Direct-transport credentials are readable by
+  every signed-in user who can open the app, including Viewers, and that Proxy transport is
+  the way to keep the token server-side.
+
 ## [0.9.38] - 2026-11-08
 
 ### Fixed

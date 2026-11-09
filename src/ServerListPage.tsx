@@ -285,8 +285,14 @@ function utilClass(value: number): string {
   return 'cc-srv-util';
 }
 
-function csvCell(value: string | number | boolean): string {
-  const text = String(value);
+export function csvCell(value: string | number | boolean): string {
+  let text = String(value);
+  // Neutralise spreadsheet formula injection. Excel and Google Sheets execute a
+  // cell that starts with =, +, - or @ as a formula, and tab/CR can be used to
+  // smuggle one in. Prefixing an apostrophe keeps the value readable as text.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`;
+  }
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

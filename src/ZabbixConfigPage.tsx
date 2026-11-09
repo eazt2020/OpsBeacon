@@ -246,6 +246,13 @@ export function ZabbixConfigPage({ plugin }: PluginConfigPageProps<AppPluginMeta
   };
 
   const endpoint = useMemo(() => zabbixEndpoint(config, 'api'), [config]);
+  // A plaintext http:// endpoint sends the bearer token (or login password) over
+  // the network in the clear. Same-origin relative paths are proxied by Grafana
+  // and localhost is exempt so a co-located development Zabbix is not flagged.
+  const insecureHttpEndpoint =
+    config.transport === 'direct' &&
+    /^http:\/\//i.test(endpoint) &&
+    !/^http:\/\/(?:localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?(?:\/|$)/i.test(endpoint);
   const proxyBase = appSubUrl() || '';
 
   const onSave = async () => {
@@ -346,6 +353,14 @@ export function ZabbixConfigPage({ plugin }: PluginConfigPageProps<AppPluginMeta
             <code>/api_jsonrpc.php</code> is also accepted. Effective endpoint:{' '}
             <code>{endpoint}</code>
           </p>
+          {insecureHttpEndpoint ? (
+            <div className="warn">
+              This endpoint uses plain <code>http://</code>, so the API token or login password
+              travels across the network unencrypted and can be read by anyone who can observe the
+              traffic. Use <code>https://</code> (for example through a reverse proxy with a
+              certificate) or the server proxy transport.
+            </div>
+          ) : null}
 
           <label htmlFor="cc-auth-method">Authentication</label>
           <select

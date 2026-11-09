@@ -6485,7 +6485,10 @@ System.register(['react', '@grafana/data'], (function (exports) {
         return "cc-srv-util";
       }
       function csvCell(value) {
-        const text = String(value);
+        let text = String(value);
+        if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) {
+          text = `'${text}`;
+        }
         return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
       }
       function ServerListPage({
@@ -7073,6 +7076,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           reader.readAsDataURL(file);
         };
         const endpoint = useMemo(() => zabbixEndpoint(config, "api"), [config]);
+        const insecureHttpEndpoint = config.transport === "direct" && /^http:\/\//i.test(endpoint) && !/^http:\/\/(?:localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?(?:\/|$)/i.test(endpoint);
         const proxyBase = appSubUrl() || "";
         const onSave = async () => {
           setSaving(true);
@@ -7131,7 +7135,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
             placeholder: "zabbix.example.com",
             onChange: (e) => patch({ apiUrl: e.target.value })
           }
-        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, "Enter the Zabbix server IP or hostname; ", /* @__PURE__ */ React.createElement("code", null, "/api_jsonrpc.php"), " is appended automatically (HTTP is assumed when no scheme is given). A full endpoint such as", " ", /* @__PURE__ */ React.createElement("code", null, "https://zabbix.example/zabbix/api_jsonrpc.php"), " or a same-origin", " ", /* @__PURE__ */ React.createElement("code", null, "/api_jsonrpc.php"), " is also accepted. Effective endpoint:", " ", /* @__PURE__ */ React.createElement("code", null, endpoint)), /* @__PURE__ */ React.createElement("label", { htmlFor: "cc-auth-method" }, "Authentication"), /* @__PURE__ */ React.createElement(
+        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, "Enter the Zabbix server IP or hostname; ", /* @__PURE__ */ React.createElement("code", null, "/api_jsonrpc.php"), " is appended automatically (HTTP is assumed when no scheme is given). A full endpoint such as", " ", /* @__PURE__ */ React.createElement("code", null, "https://zabbix.example/zabbix/api_jsonrpc.php"), " or a same-origin", " ", /* @__PURE__ */ React.createElement("code", null, "/api_jsonrpc.php"), " is also accepted. Effective endpoint:", " ", /* @__PURE__ */ React.createElement("code", null, endpoint)), insecureHttpEndpoint ? /* @__PURE__ */ React.createElement("div", { className: "warn" }, "This endpoint uses plain ", /* @__PURE__ */ React.createElement("code", null, "http://"), ", so the API token or login password travels across the network unencrypted and can be read by anyone who can observe the traffic. Use ", /* @__PURE__ */ React.createElement("code", null, "https://"), " (for example through a reverse proxy with a certificate) or the server proxy transport.") : null, /* @__PURE__ */ React.createElement("label", { htmlFor: "cc-auth-method" }, "Authentication"), /* @__PURE__ */ React.createElement(
           "select",
           {
             id: "cc-auth-method",
