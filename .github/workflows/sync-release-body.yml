@@ -1,0 +1,32 @@
+name: Sync release body
+
+# One-off maintenance job: rebuild the bodies of the existing releases with the
+# unwrapped output of scripts/release-body.mjs. Removed once it has run.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-release-body.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Update the published release bodies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for VERSION in 0.9.40 0.9.39 0.8.1; do
+            PREVIOUS="$(gh release list --exclude-drafts --limit 200 --json tagName \
+              --jq '.[].tagName' | sed 's/^v//' \
+              | node scripts/previous-release.mjs "${VERSION}")"
+            node scripts/release-body.mjs "${VERSION}" "${PREVIOUS}" RELEASE_NOTES.md > release-notes.md
+            gh release edit "v${VERSION}" --notes-file release-notes.md
+          done
