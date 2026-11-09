@@ -49,22 +49,20 @@ jobs:
           (cd release && zip -r "../acme-command-center-app-${VERSION}.zip" acme-command-center-app)
           sha256sum "acme-command-center-app-${VERSION}.zip" > "acme-command-center-app-${VERSION}.zip.sha256"
 
-      - name: Extract release notes for this version
+      - name: Extract release notes for this release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          # Publish only the section for this release. RELEASE_NOTES.md keeps the
-          # full history, but a release body repeating every earlier version is
-          # noise. The section runs from "## <version>" to the next "## ".
-          awk -v header="## ${VERSION}" '
-            $0 == header { found = 1; next }
-            found && /^## / { exit }
-            found { print }
-          ' RELEASE_NOTES.md | sed '/./,$!d' > release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "No '## ${VERSION}' section found in RELEASE_NOTES.md" >&2
-            exit 1
-          fi
+          # The body covers every change after the previous published release up
+          # to this version, so versions documented in between are folded into
+          # this release instead of being repeated in every later one.
+          PREVIOUS="$(gh release list --exclude-drafts --limit 200 --json tagName \
+            --jq '.[].tagName' | sed 's/^v//' \
+            | node scripts/previous-release.mjs "${VERSION}")"
+          echo "Previous release: ${PREVIOUS:-none}"
+          node scripts/release-body.mjs "${VERSION}" "${PREVIOUS}" RELEASE_NOTES.md > release-notes.md
           echo "----- release body -----"
           cat release-notes.md
 
