@@ -53,6 +53,15 @@ export interface ZabbixConfig {
   sampleDataEnabled: boolean;
   /** Data mode selected when the page is first opened. */
   defaultSource: 'sample' | 'live';
+  /** Brand shown in the Command Center and Server Inventory header. */
+  brandName: string;
+  /** Tagline shown after the brand name in the header eyebrow. */
+  brandTagline: string;
+  /**
+   * Optional logo: an http(s) URL or an embedded data URL uploaded from the
+   * plugin settings page. Empty keeps the built-in three-bar mark.
+   */
+  logoUrl: string;
 }
 
 export const DEFAULT_ZABBIX_CONFIG: ZabbixConfig = {
@@ -67,6 +76,9 @@ export const DEFAULT_ZABBIX_CONFIG: ZabbixConfig = {
   refreshSeconds: 60,
   sampleDataEnabled: true,
   defaultSource: 'sample',
+  brandName: 'OPSBEACON',
+  brandTagline: 'REAL-TIME INFRASTRUCTURE HEALTH',
+  logoUrl: '',
 };
 
 /**
@@ -157,6 +169,37 @@ export function normalizeApiUrl(value: unknown, fallback: string = DEFAULT_ZABBI
   return `${parsed.origin}${path.replace(/\/{2,}/g, '/')}`;
 }
 
+/** Hard cap for an embedded logo keeps plugin settings (and every page load) small. */
+export const MAX_LOGO_CHARS = 400_000;
+
+function normalizeBrandName(value: unknown): string {
+  const text = typeof value === 'string' ? value.trim().slice(0, 40) : '';
+  return text || DEFAULT_ZABBIX_CONFIG.brandName;
+}
+
+function normalizeBrandTagline(value: unknown): string {
+  const text = typeof value === 'string' ? value.trim().slice(0, 80) : '';
+  return text || DEFAULT_ZABBIX_CONFIG.brandTagline;
+}
+
+/** Accept either an http(s) image URL or a base64 data URL produced by the uploader. */
+export function normalizeLogoUrl(value: unknown): string {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const url = value.trim();
+  if (!url || url.length > MAX_LOGO_CHARS) {
+    return '';
+  }
+  if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[a-z0-9+/=]+$/i.test(url)) {
+    return url;
+  }
+  if (/^https?:\/\/\S+$/i.test(url)) {
+    return url;
+  }
+  return '';
+}
+
 export function normalizeConfig(raw: unknown): ZabbixConfig {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const parsed = parseInt(String(r.refreshSeconds ?? ''), 10);
@@ -177,6 +220,9 @@ export function normalizeConfig(raw: unknown): ZabbixConfig {
     // Enabled unless the stored setting is explicitly false.
     sampleDataEnabled: r.sampleDataEnabled !== false && r.sampleDataEnabled !== 'false',
     defaultSource: r.defaultSource === 'live' ? 'live' : 'sample',
+    brandName: normalizeBrandName(r.brandName),
+    brandTagline: normalizeBrandTagline(r.brandTagline),
+    logoUrl: normalizeLogoUrl(r.logoUrl),
   };
 }
 
@@ -197,6 +243,9 @@ export function toJsonData(config: ZabbixConfig): Record<string, unknown> {
     sampleDataEnabled: config.sampleDataEnabled,
     // Live-only mode cannot open on the sample dataset.
     defaultSource: config.sampleDataEnabled ? config.defaultSource : 'live',
+    brandName: normalizeBrandName(config.brandName),
+    brandTagline: normalizeBrandTagline(config.brandTagline),
+    logoUrl: normalizeLogoUrl(config.logoUrl),
   };
 }
 
@@ -247,12 +296,15 @@ export async function loadZabbixConfig(force = false): Promise<ZabbixConfig> {
   }
 }
 
-export async function saveZabbixConfig(config: ZabbixConfig): Promise<void> {
+export async function saveZabbixConfig(config: ZabbixConfig): Promise<ZabbixConfig> {
+  // Persist the same normalised values the pages will run with, so the stored
+  // interval always equals the effective interval (e.g. 10 s is stored as 15 s).
+  const normalized = normalizeConfig(config);
   const res = await fetch(settingsUrl(), {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ enabled: true, pinned: true, jsonData: toJsonData(config) }),
+    body: JSON.stringify({ enabled: true, pinned: true, jsonData: toJsonData(normalized) }),
   });
   if (!res.ok) {
     let message = `Grafana returned HTTP ${res.status}`;
@@ -267,7 +319,8 @@ export async function saveZabbixConfig(config: ZabbixConfig): Promise<void> {
     throw new Error(message);
   }
   invalidateConfigCache();
-  cache = { config: { ...config }, at: Date.now() };
+  cache = { config: normalized, at: Date.now() };
+  return normalized;
 }
 
 export function zabbixEndpoint(config: ZabbixConfig, route: 'api' | 'public'): string {

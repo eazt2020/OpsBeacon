@@ -1,17 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { FleetAverage, Health, Host, HostDetail, Problem } from './types';
-import { fallbackHostDetail, fetchHostDetail, sampleHostDetail } from './data/hostDetail';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  FleetAverage,
+  Health,
+  HistoryPoint,
+  HistoryRangeKey,
+  Host,
+  HostDetail,
+  HostHistory,
+  Problem,
+} from './types';
+import {
+  HISTORY_RANGES,
+  HISTORY_RANGE_KEYS,
+  fallbackHostDetail,
+  fetchHostDetail,
+  fetchHostHistory,
+  sampleHostDetail,
+  sampleHostHistory,
+} from './data/hostDetail';
 
 const HEALTH_COLOR: Record<Health, string> = {
   healthy: '#00d47e',
   warning: '#ffc107',
-  critical: '#ff4d67',
-  stale: '#8ea3bf',
-  maintenance: '#5fb0ff',
-  unavailable: '#ff8a3d',
+  critical: '#ff3b30',
+  stale: '#8f9298',
+  maintenance: '#22d3ee',
+  unavailable: '#a855f7',
 };
 
-const BAND_COLOR = (value: number) => (value >= 90 ? '#ff4d67' : value >= 70 ? '#ffc107' : '#00d47e');
+const BAND_COLOR = (value: number) => (value >= 90 ? '#ff3b30' : value >= 70 ? '#ffc107' : '#00d47e');
 const BAND_LABEL = (value: number) => (value >= 90 ? 'Critical' : value >= 70 ? 'Warning' : 'Normal');
 
 type MetricKey = 'cpu' | 'memory' | 'disk' | 'network';
@@ -22,6 +39,63 @@ const METRICS: Array<{ key: MetricKey; label: string; accent: string }> = [
   { key: 'disk', label: 'Disk Utilisation', accent: '#00d47e' },
   { key: 'network', label: 'Network Utilisation', accent: '#00d4ff' },
 ];
+
+type HistoryTab = MetricKey | 'filesystems';
+
+const HISTORY_TABS: Array<{ key: HistoryTab; label: string; color: string }> = [
+  { key: 'cpu', label: 'CPU', color: '#2f9bff' },
+  { key: 'memory', label: 'Memory', color: '#8b5cf6' },
+  { key: 'disk', label: 'Disk', color: '#00d47e' },
+  { key: 'network', label: 'Network', color: '#00d4ff' },
+  { key: 'filesystems', label: 'Filesystems', color: '#8f9298' },
+];
+
+/** Categorical slots validated against the dark chart surface (adjacent pairs). */
+const HISTORY_COLORS = [
+  '#3987e5',
+  '#d95926',
+  '#199e70',
+  '#c98500',
+  '#d55181',
+  '#008300',
+  '#9085e9',
+  '#e66767',
+];
+
+function formatAxisTime(t: number, range: HistoryRangeKey): string {
+  const date = new Date(t * 1000);
+  if (range === '6h' || range === '24h') {
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+  if (range === '7d') {
+    return date.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit' });
+  }
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+}
+
+function formatTooltipTime(t: number): string {
+  return new Date(t * 1000).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+interface ChartSeries {
+  key: string;
+  label: string;
+  color: string;
+  points: HistoryPoint[];
+}
+
+/** Series can have different gaps; align the hover readout by timestamp. */
+function nearestPoint(points: HistoryPoint[], t: number): HistoryPoint {
+  return points.reduce(
+    (best, point) => (Math.abs(point.t - t) < Math.abs(best.t - t) ? point : best),
+    points[0]
+  );
+}
 
 function Gauge({ value, color }: { value: number; color: string }) {
   const v = Math.max(0, Math.min(100, value));
@@ -36,6 +110,7 @@ function Gauge({ value, color }: { value: number; color: string }) {
           strokeLinecap="round"
         />
         <path
+          className="cc-gauge-fill"
           d="M 12 60 A 48 48 0 0 1 108 60"
           fill="none"
           stroke={color}
@@ -76,9 +151,9 @@ function Sparkline({ values, color }: { values?: number[]; color: string }) {
   if (!values || values.length < 2) {
     return <div className="cc-detail-spark-empty">no history</div>;
   }
-  const w = 160;
+  const w = 240;
   const h = 40;
-  const pad = 3;
+  const pad = 4;
   const n = values.length;
   const point = (value: number, index: number): [number, number] => [
     pad + (index * (w - pad * 2)) / (n - 1),
@@ -89,7 +164,11 @@ function Sparkline({ values, color }: { values?: number[]; color: string }) {
   const area = `M ${points[0][0]},${h - pad} L ${line.replace(/ /g, ' L ')} L ${
     points[n - 1][0]
   },${h - pad} Z`;
-  const last = points[n - 1];
+  const maxIndex = values.indexOf(Math.max(...values));
+  const minIndex = values.indexOf(Math.min(...values));
+  const maxPoint = points[maxIndex];
+  const minPoint = points[minIndex];
+  const timeLabel = (index: number) => (index === n - 1 ? 'now' : `${n - 1 - index}h ago`);
   return (
     <svg className="cc-detail-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
       <line
@@ -97,15 +176,320 @@ function Sparkline({ values, color }: { values?: number[]; color: string }) {
         y1={h - pad - 0.9 * (h - pad * 2)}
         x2={w - pad}
         y2={h - pad - 0.9 * (h - pad * 2)}
-        stroke="#ff4d67"
+        stroke="#ff3b30"
         strokeWidth="1"
         strokeDasharray="2 3"
         opacity="0.35"
       />
       <path d={area} fill={color} opacity="0.12" />
-      <polyline points={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r="2.2" fill={color} />
+      <polyline
+        className="cc-spark-line"
+        points={line}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      {/* Every sample gets a dot so the line reads point-to-point. */}
+      {points.map(([x, y], index) => (
+        <circle key={index} cx={x} cy={y} r="1.5" fill={color} opacity="0.95">
+          <title>{`${values[index].toFixed(1)}% · ${timeLabel(index)}`}</title>
+        </circle>
+      ))}
+      {/* Peak and trough are larger and colour-coded, so the high and low
+          points are identifiable without hovering. */}
+      <circle
+        cx={maxPoint[0]}
+        cy={maxPoint[1]}
+        r="3"
+        fill="#ff3b30"
+        stroke="#0a1424"
+        strokeWidth="1.2"
+      >
+        <title>{`Peak ${values[maxIndex].toFixed(1)}% · ${timeLabel(maxIndex)}`}</title>
+      </circle>
+      <circle
+        cx={minPoint[0]}
+        cy={minPoint[1]}
+        r="3"
+        fill="#00d47e"
+        stroke="#0a1424"
+        strokeWidth="1.2"
+      >
+        <title>{`Low ${values[minIndex].toFixed(1)}% · ${timeLabel(minIndex)}`}</title>
+      </circle>
     </svg>
+  );
+}
+
+function HistoryChart({
+  series,
+  from,
+  to,
+  range,
+}: {
+  series: ChartSeries[];
+  from: number;
+  to: number;
+  range: HistoryRangeKey;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const width = 720;
+  const height = 300;
+  const margin = { top: 18, right: 18, bottom: 34, left: 46 };
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+  const span = Math.max(1, to - from);
+  const xFor = (t: number) => margin.left + ((t - from) / span) * plotW;
+  const yFor = (v: number) => margin.top + (1 - Math.max(0, Math.min(100, v)) / 100) * plotH;
+  const grid = [0, 25, 50, 75, 100];
+  const xTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => from + f * span);
+  const basePoints = series[0] ? series[0].points : [];
+  const count = basePoints.length;
+  const hoverIndex = hover !== null && count ? Math.min(hover, count - 1) : null;
+  const hoveredT = hoverIndex !== null ? basePoints[hoverIndex].t : null;
+
+  if (!series.length || !count) {
+    return <div className="cc-history-empty">No samples in this window.</div>;
+  }
+
+  const single = series.length === 1 ? series[0] : null;
+  const peakIndex = single
+    ? single.points.reduce((best, p, i, arr) => (p.v > arr[best].v ? i : best), 0)
+    : -1;
+  const lowIndex = single
+    ? single.points.reduce((best, p, i, arr) => (p.v < arr[best].v ? i : best), 0)
+    : -1;
+  const areaPath = single
+    ? `M ${xFor(single.points[0].t)},${yFor(0)} L ${single.points
+        .map((p) => `${xFor(p.t).toFixed(1)},${yFor(p.v).toFixed(1)}`)
+        .join(' L ')} L ${xFor(single.points[single.points.length - 1].t)},${yFor(0)} Z`
+    : '';
+
+  return (
+    <div className="cc-history-plot">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`History chart for ${series.map((s) => s.label).join(', ')} across ${range}`}
+      >
+        {grid.map((value) => (
+          <g key={value}>
+            <line
+              x1={margin.left}
+              y1={yFor(value)}
+              x2={width - margin.right}
+              y2={yFor(value)}
+              stroke="rgba(255,255,255,0.07)"
+              strokeWidth="1"
+            />
+            <text
+              x={margin.left - 8}
+              y={yFor(value) + 3}
+              textAnchor="end"
+              className="cc-history-axis-label"
+            >
+              {value}%
+            </text>
+          </g>
+        ))}
+
+        {single ? (
+          <>
+            <line
+              x1={margin.left}
+              y1={yFor(90)}
+              x2={width - margin.right}
+              y2={yFor(90)}
+              stroke="#ff3b30"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+              opacity="0.35"
+            />
+            <line
+              x1={margin.left}
+              y1={yFor(70)}
+              x2={width - margin.right}
+              y2={yFor(70)}
+              stroke="#ffc107"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+              opacity="0.28"
+            />
+          </>
+        ) : null}
+
+        <line
+          x1={margin.left}
+          y1={height - margin.bottom}
+          x2={width - margin.right}
+          y2={height - margin.bottom}
+          stroke="rgba(255,255,255,0.16)"
+          strokeWidth="1"
+        />
+        {xTicks.map((t, index) => (
+          <text
+            key={index}
+            x={xFor(t)}
+            y={height - 12}
+            textAnchor={index === 0 ? 'start' : index === xTicks.length - 1 ? 'end' : 'middle'}
+            className="cc-history-axis-label"
+          >
+            {formatAxisTime(t, range)}
+          </text>
+        ))}
+
+        {single ? <path className="cc-history-area" d={areaPath} fill={single.color} /> : null}
+        {series.map((s, index) => (
+          <polyline
+            key={s.key}
+            className="cc-history-line"
+            pathLength={1}
+            points={s.points
+              .map((p) => `${xFor(p.t).toFixed(1)},${yFor(p.v).toFixed(1)}`)
+              .join(' ')}
+            fill="none"
+            stroke={s.color}
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            style={{ animationDelay: `${index * 0.07}s` }}
+          />
+        ))}
+
+        {single ? (
+          <g className="cc-history-dots">
+            {single.points.map((point, index) => (
+              <circle
+                key={index}
+                cx={xFor(point.t)}
+                cy={yFor(point.v)}
+                r="1.7"
+                fill={single.color}
+                opacity="0.85"
+              />
+            ))}
+          </g>
+        ) : null}
+
+        {single && single.points.length ? (
+          <g className="cc-history-latest">
+            <circle
+              cx={xFor(single.points[single.points.length - 1].t)}
+              cy={yFor(single.points[single.points.length - 1].v)}
+              r="7"
+              fill="none"
+              stroke={single.color}
+              strokeWidth="1.3"
+            />
+            <circle
+              cx={xFor(single.points[single.points.length - 1].t)}
+              cy={yFor(single.points[single.points.length - 1].v)}
+              r="3"
+              fill={single.color}
+              stroke="#0a1424"
+              strokeWidth="1.2"
+            />
+          </g>
+        ) : null}
+
+        {single ? (
+          <>
+            <circle
+              cx={xFor(single.points[peakIndex].t)}
+              cy={yFor(single.points[peakIndex].v)}
+              r="3.5"
+              fill="#ff3b30"
+              stroke="#0a1424"
+              strokeWidth="1.4"
+            >
+              <title>{`Peak ${single.points[peakIndex].v.toFixed(1)}% · ${formatTooltipTime(
+                single.points[peakIndex].t
+              )}`}</title>
+            </circle>
+            <circle
+              cx={xFor(single.points[lowIndex].t)}
+              cy={yFor(single.points[lowIndex].v)}
+              r="3.5"
+              fill="#00d47e"
+              stroke="#0a1424"
+              strokeWidth="1.4"
+            >
+              <title>{`Low ${single.points[lowIndex].v.toFixed(1)}% · ${formatTooltipTime(
+                single.points[lowIndex].t
+              )}`}</title>
+            </circle>
+          </>
+        ) : null}
+
+        {hoveredT !== null && hoverIndex !== null ? (
+          <g>
+            <line
+              x1={xFor(hoveredT)}
+              y1={margin.top}
+              x2={xFor(hoveredT)}
+              y2={height - margin.bottom}
+              stroke="rgba(219,231,245,0.5)"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+            />
+            {series.map((s) => {
+              const point = nearestPoint(s.points, hoveredT);
+              return (
+                <circle
+                  key={s.key}
+                  cx={xFor(point.t)}
+                  cy={yFor(point.v)}
+                  r="3"
+                  fill={s.color}
+                  stroke="#0a1424"
+                  strokeWidth="1.2"
+                />
+              );
+            })}
+          </g>
+        ) : null}
+
+        <rect
+          x={margin.left}
+          y={margin.top}
+          width={plotW}
+          height={plotH}
+          fill="transparent"
+          pointerEvents="all"
+          onMouseMove={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            if (!rect.width) {
+              return;
+            }
+            const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+            setHover(Math.round(fraction * (count - 1)));
+          }}
+          onMouseLeave={() => setHover(null)}
+        />
+      </svg>
+
+      {hoveredT !== null && hoverIndex !== null ? (
+        <div
+          className="cc-history-tip"
+          style={{
+            left: `${Math.min(92, Math.max(8, (xFor(hoveredT) / width) * 100))}%`,
+          }}
+        >
+          <div className="cc-history-tip-time">{formatTooltipTime(hoveredT)}</div>
+          {series.map((s) => {
+            const point = nearestPoint(s.points, hoveredT);
+            return (
+              <div className="cc-history-tip-row" key={s.key}>
+                <i style={{ background: s.color }} />
+                <span>{s.label}</span>
+                <b>{point.v.toFixed(1)}%</b>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -163,6 +547,13 @@ export function HostDetailModal({
   const [state, setState] = useState<'loading' | 'ready' | 'error'>(
     source === 'sample' ? 'ready' : 'loading'
   );
+  const [historyTab, setHistoryTab] = useState<HistoryTab | null>(null);
+  const [historyRange, setHistoryRange] = useState<HistoryRangeKey>('24h');
+  const [history, setHistory] = useState<HostHistory | null>(null);
+  const [historyState, setHistoryState] = useState<'idle' | 'loading' | 'ready' | 'error'>(
+    'idle'
+  );
+  const historyCache = useRef(new Map<HistoryRangeKey, HostHistory>());
 
   useEffect(() => {
     if (source === 'sample') {
@@ -192,14 +583,82 @@ export function HostDetailModal({
   }, [host.id, host.hostname, host.cpu, host.memory, host.disk, host.network, source]);
 
   useEffect(() => {
+    historyCache.current.clear();
+    setHistoryTab(null);
+    setHistory(null);
+    setHistoryState('idle');
+  }, [host.id, host.hostname]);
+
+  useEffect(() => {
+    if (!historyTab) {
+      return;
+    }
+    if (source === 'sample') {
+      setHistory(sampleHostHistory(host, historyRange));
+      setHistoryState('ready');
+      return;
+    }
+    const cached = historyCache.current.get(historyRange);
+    if (cached) {
+      setHistory(cached);
+      setHistoryState('ready');
+      return;
+    }
+    let cancelled = false;
+    const now = Math.floor(Date.now() / 1000);
+    setHistory(null);
+    setHistoryState('loading');
+    fetchHostHistory(host, historyRange)
+      .then((result) => {
+        if (!cancelled) {
+          historyCache.current.set(historyRange, result);
+          setHistory(result);
+          setHistoryState('ready');
+        }
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          setHistoryState('error');
+          setHistory({
+            range: historyRange,
+            from: now - HISTORY_RANGES[historyRange].seconds,
+            to: now,
+            series: {},
+            filesystems: [],
+            source: 'live',
+            partial: true,
+            note: `Live history unavailable: ${err.message}`,
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    historyTab,
+    historyRange,
+    source,
+    host.id,
+    host.hostname,
+    host.cpu,
+    host.memory,
+    host.disk,
+    host.network,
+  ]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        if (historyTab) {
+          setHistoryTab(null);
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, historyTab]);
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -216,6 +675,39 @@ export function HostDetailModal({
   const filesystems = detail ? detail.filesystems : [];
   const healthColor = HEALTH_COLOR[host.health];
 
+  const historyMeta = METRICS.find((metric) => metric.key === historyTab);
+  const historyLabel =
+    historyTab === 'filesystems' ? 'All filesystems' : historyMeta ? historyMeta.label : '';
+  const chartSeries: ChartSeries[] = [];
+  if (history) {
+    if (historyTab === 'filesystems') {
+      history.filesystems.forEach((fs, index) => {
+        chartSeries.push({
+          key: fs.mount,
+          label: fs.mount,
+          color: HISTORY_COLORS[index % HISTORY_COLORS.length],
+          points: fs.points,
+        });
+      });
+    } else if (historyTab) {
+      const points = history.series[historyTab];
+      if (points && points.length && historyMeta) {
+        chartSeries.push({
+          key: historyTab,
+          label: historyMeta.label.replace(' Utilisation', ''),
+          color: historyMeta.accent,
+          points,
+        });
+      }
+    }
+  }
+  const singleValues = chartSeries.length === 1 ? chartSeries[0].points.map((p) => p.v) : [];
+  const singlePeak = singleValues.length ? Math.max(...singleValues) : 0;
+  const singleLow = singleValues.length ? Math.min(...singleValues) : 0;
+  const singleAvg = singleValues.length
+    ? singleValues.reduce((sum, value) => sum + value, 0) / singleValues.length
+    : 0;
+
   return (
     <div
       className="cc-modal-backdrop"
@@ -231,6 +723,9 @@ export function HostDetailModal({
         aria-modal="true"
         aria-labelledby="cc-host-detail-title"
       >
+        <div className="cc-modal-aurora a1" aria-hidden="true" />
+        <div className="cc-modal-aurora a2" aria-hidden="true" />
+        <div className="cc-modal-beam" aria-hidden="true" />
         <div className="cc-modal-head">
           <div>
             <div className="cc-modal-kicker">
@@ -250,12 +745,150 @@ export function HostDetailModal({
         </div>
 
         <div className="cc-modal-body">
+          {historyTab ? (
+            <div className="cc-history">
+              <div className="cc-history-head">
+                <button
+                  type="button"
+                  className="cc-history-back"
+                  onClick={() => setHistoryTab(null)}
+                >
+                  ← Overview
+                </button>
+                <div className="cc-history-heading">
+                  <div className="cc-history-title">{historyLabel} history</div>
+                  <div className="cc-history-sub">
+                    {HISTORY_RANGES[historyRange].full}
+                    {historyState === 'loading'
+                      ? ' · loading from Zabbix…'
+                      : history && history.source === 'sample'
+                      ? ' · sample dataset'
+                      : ' · point-to-point samples'}
+                  </div>
+                </div>
+                <div className="cc-history-ranges" role="group" aria-label="History time range">
+                  {HISTORY_RANGE_KEYS.map((key) => (
+                    <button
+                      type="button"
+                      key={key}
+                      className={`cc-history-range${key === historyRange ? ' active' : ''}`}
+                      aria-pressed={key === historyRange}
+                      onClick={() => setHistoryRange(key)}
+                    >
+                      {HISTORY_RANGES[key].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="cc-history-tabs" role="tablist" aria-label="History metric">
+                {HISTORY_TABS.map((tab) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    key={tab.key}
+                    aria-selected={historyTab === tab.key}
+                    className={`cc-history-tab${historyTab === tab.key ? ' active' : ''}`}
+                    onClick={() => setHistoryTab(tab.key)}
+                  >
+                    <i style={{ background: tab.color }} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="cc-panel cc-history-panel">
+                <div className="cc-history-panel-head">
+                  <div>
+                    <div className="cc-history-panel-title">
+                      {historyTab === 'filesystems'
+                        ? 'Filesystem utilisation'
+                        : `${historyLabel.replace(' Utilisation', '')} utilisation`}
+                    </div>
+                    <div className="cc-history-panel-sub">
+                      {HISTORY_RANGES[historyRange].full} · 0–100% scale
+                    </div>
+                  </div>
+                  {singleValues.length ? (
+                    <div className="cc-history-stats">
+                      <span className="peak">
+                        peak <b>{singlePeak.toFixed(1)}%</b>
+                      </span>
+                      <span className="low">
+                        low <b>{singleLow.toFixed(1)}%</b>
+                      </span>
+                      <span>
+                        avg <b>{singleAvg.toFixed(1)}%</b>
+                      </span>
+                    </div>
+                  ) : chartSeries.length ? (
+                    <div className="cc-history-stats">
+                      <span>
+                        <b>{chartSeries.length}</b> series
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+
+                {historyState === 'loading' && !history ? (
+                  <div className="cc-history-loading">Loading {HISTORY_RANGES[historyRange].full} from Zabbix…</div>
+                ) : (
+                  <HistoryChart
+                    key={`${historyTab}-${historyRange}`}
+                    series={chartSeries}
+                    from={history ? history.from : 0}
+                    to={history ? history.to : 0}
+                    range={historyRange}
+                  />
+                )}
+
+                {chartSeries.length > 1 ? (
+                  <div className="cc-history-legend">
+                    {chartSeries.map((s) => {
+                      const latest = s.points[s.points.length - 1];
+                      return (
+                        <span key={s.key}>
+                          <i style={{ background: s.color }} />
+                          {s.label}
+                          {latest ? (
+                            <b style={{ color: BAND_COLOR(latest.v) }}>{latest.v.toFixed(0)}%</b>
+                          ) : null}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {history ? <div className="cc-history-note">{history.note}</div> : null}
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="cc-metric-grid">
             {METRICS.map((metric) => {
               const value = host[metric.key];
               const trend = detail ? detail.trends[metric.key] : undefined;
+              const hasTrend = !!trend && trend.length > 1;
+              const peak = hasTrend ? Math.max(...trend) : 0;
+              const low = hasTrend ? Math.min(...trend) : 0;
               return (
-                <div className="cc-metric-card" key={metric.key}>
+                <div
+                  className="cc-metric-card cc-metric-click"
+                  key={metric.key}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open ${metric.label} history`}
+                  onClick={() => setHistoryTab(metric.key)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setHistoryTab(metric.key);
+                    }
+                  }}
+                >
+                  <span className="cc-metric-open" aria-hidden="true">
+                    history ↗
+                  </span>
                   <Gauge value={value} color={BAND_COLOR(value)} />
                   <div className="cc-metric-info">
                     <div className="cc-metric-name">{metric.label}</div>
@@ -266,7 +899,18 @@ export function HostDetailModal({
                   </div>
                   <Sparkline values={trend} color={metric.accent} />
                   <div className="cc-metric-foot">
-                    {trend && trend.length > 1 ? 'last 24 h' : 'current snapshot'}
+                    {hasTrend ? (
+                      <>
+                        <span className="cc-metric-range">
+                          <b className="peak">peak {peak.toFixed(0)}%</b>
+                          <em>·</em>
+                          <b className="low">low {low.toFixed(0)}%</b>
+                        </span>
+                        <span>last 24 h</span>
+                      </>
+                    ) : (
+                      <span>current snapshot</span>
+                    )}
                   </div>
                 </div>
               );
@@ -305,9 +949,16 @@ export function HostDetailModal({
                       <i style={{ background: '#ffc107' }} /> 70–90%
                     </span>
                     <span>
-                      <i style={{ background: '#ff4d67' }} /> ≥ 90%
+                      <i style={{ background: '#ff3b30' }} /> ≥ 90%
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    className="cc-fs-history"
+                    onClick={() => setHistoryTab('filesystems')}
+                  >
+                    View filesystem history →
+                  </button>
                 </div>
               )}
             </Section>
@@ -414,15 +1065,31 @@ export function HostDetailModal({
               </div>
             )}
           </Section>
+            </>
+          )}
         </div>
 
         <div className="cc-modal-foot">
           <span
             className={`cc-detail-note ${
-              state === 'error' ? 'error' : detail && detail.partial ? 'partial' : ''
+              state === 'error' || historyState === 'error'
+                ? 'error'
+                : (!historyTab && detail && detail.partial) || (historyTab && history && history.partial)
+                ? 'partial'
+                : ''
             }`}
           >
-            {detail ? detail.note : state === 'loading' ? 'Loading live details from Zabbix…' : ''}
+            {historyTab
+              ? historyState === 'loading'
+                ? 'Loading history from Zabbix…'
+                : history
+                ? history.note
+                : ''
+              : detail
+              ? detail.note
+              : state === 'loading'
+              ? 'Loading live details from Zabbix…'
+              : ''}
           </span>
           {inventoryHref ? (
             <a className="cc-modal-link" href={inventoryHref}>

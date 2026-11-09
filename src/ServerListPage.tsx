@@ -1,9 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { buildSampleData, matchesFilters } from './data/sampleData';
-import { appSubUrl, isGrafanaHosted, loadZabbixConfig, resolveSource, ZabbixConfig } from './data/config';
-import { fetchZabbixData, LiveResult } from './data/zabbixData';
+import {
+  appSubUrl,
+  DEFAULT_ZABBIX_CONFIG,
+  isGrafanaHosted,
+  loadZabbixConfig,
+  resolveSource,
+  ZabbixConfig,
+} from './data/config';
+import { fetchLiveData } from './data/liveData';
+import { LiveResult } from './data/zabbixData';
 import { CSS } from './styles';
-import { Filters, Health, Host, Problem } from './types';
+import { HostDetailModal } from './HostDetailModal';
+import { BrandMark } from './components';
+import { Filters, FleetAverage, Health, Host, Problem } from './types';
 
 const ALL = 'All';
 const PAGE_SIZES = [25, 50, 100, 250];
@@ -58,7 +68,8 @@ const SCOPE_META: Record<Scope, { title: string; blurb: string; problems?: 'all'
   maintenance: { title: 'Servers in maintenance', blurb: 'Hosts currently inside a Zabbix maintenance window.' },
   stale: {
     title: 'Servers with stale / no data',
-    blurb: 'Newest item value is 5–10 minutes old (stale) or older than 10 minutes (no data).',
+    blurb:
+      'Newest item value lags the freshest item in the estate by 5–10 minutes (stale) or more than 10 minutes (no data).',
   },
 };
 
@@ -80,73 +91,127 @@ const DATA_STATE_LABEL: Record<Host['dataState'], string> = {
 
 const SRV_CSS = `
 .cc-srv { padding-top: 18px; }
-.cc-srv-head { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; }
+.cc-srv-head { display: flex; gap: 16px 22px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
+.cc-srv-brand { display: flex; gap: 13px; align-items: flex-start; min-width: 0; }
+.cc-srv-titles { min-width: 260px; }
 .cc-srv-back {
-  display: inline-flex; align-items: center; gap: 5px; color: #7fc4ff; text-decoration: none;
-  font-size: 11px; padding: 6px 9px; border: 1px solid #1c314e; border-radius: 5px;
-  background: #0b1728; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; color: #9bd0ff; text-decoration: none;
+  font-size: 11.5px; font-weight: 600; padding: 7px 11px; border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 8px; background: rgba(10, 20, 36, 0.62); white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
-.cc-srv-back:hover { border-color: #2b6ca3; color: #fff; }
-.cc-srv-titles { min-width: 240px; }
-.cc-srv-title { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; line-height: 1; }
-.cc-srv-sub { font-size: 10px; color: #8ea3bf; margin-top: 6px; max-width: 760px; }
+.cc-srv-back:hover { border-color: rgba(127, 196, 255, 0.5); color: #fff; background: rgba(47, 155, 255, 0.12); }
+.cc-srv-title {
+  margin: 4px 0 5px; font-size: clamp(22px, 1.75vw, 28px); font-weight: 700;
+  letter-spacing: 0.045em; line-height: 1.12;
+  background: linear-gradient(90deg, #9bd0ff 0%, #e8f4ff 24%, #c4b5fd 50%, #7fc4ff 76%, #9bd0ff 100%);
+  background-size: 220% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: cc-title-shine 9s linear infinite;
+}
+.cc-srv-sub { font-size: 12px; line-height: 1.45; color: #9fb3cc; margin-top: 5px; max-width: 820px; }
 .cc-srv-sub strong { color: #dbe7f5; }
-.cc-srv-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cc-srv-actions { margin-left: auto; display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
 .cc-srv-btn {
-  appearance: none; font-family: inherit; cursor: pointer; font-size: 9.5px; font-weight: 700;
-  color: #dbe7f5; background: #0b1728; border: 1px solid #1c314e; border-radius: 5px;
-  padding: 6px 10px; letter-spacing: 0.2px;
+  appearance: none; font-family: inherit; cursor: pointer; font-size: 10.5px; font-weight: 600;
+  color: #dbe7f5; background: rgba(10, 20, 36, 0.62); border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 7px; padding: 7px 11px; letter-spacing: 0.02em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
-.cc-srv-btn:hover { border-color: #2b6ca3; background: #10233a; }
-.cc-srv-btn:disabled { opacity: 0.5; cursor: default; }
+.cc-srv-btn:hover { border-color: rgba(127, 196, 255, 0.5); background: rgba(47, 155, 255, 0.12); color: #fff; }
+.cc-srv-btn:disabled { opacity: 0.45; cursor: default; }
 .cc-srv-badge {
-  font-size: 8px; font-weight: 800; letter-spacing: 0.6px; padding: 3px 7px;
-  border-radius: 3px; border: 1px solid #1c314e; color: #8ea3bf;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.6px; padding: 3px 8px;
+  border-radius: 5px; border: 1px solid rgba(148, 184, 230, 0.24); color: #9fb3cc;
 }
 .cc-srv-badge.live { color: #00e676; border-color: #1c4a36; background: rgba(0, 230, 118, 0.08); }
 .cc-srv-badge.sample { color: #ffc107; border-color: #5b4a14; background: rgba(255, 193, 7, 0.08); }
-.cc-srv-filters { display: flex; gap: 9px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
-.cc-srv-search { min-width: 230px; }
-.cc-srv-search label { display: block; font-size: 8px; text-transform: uppercase; letter-spacing: 0.7px; color: #7f95b2; margin-bottom: 3px; }
-.cc-srv-search input {
-  width: 100%; background: #0b1627; border: 1px solid #203554; color: #dbe7f5;
-  border-radius: 5px; padding: 5px 7px; font-size: 10.5px; outline: none; font-family: inherit;
+.cc-srv-filters {
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px;
+  padding: 12px 14px; border: 1px solid rgba(96, 165, 250, 0.16); border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 33, 56, 0.7), rgba(7, 14, 26, 0.8));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 50px -34px rgba(0, 80, 180, 0.9);
 }
-.cc-srv-search input:focus { border-color: #2b6ca3; box-shadow: 0 0 0 2px rgba(43, 108, 163, 0.18); }
+.cc-srv-search { min-width: 230px; display: flex; flex-direction: column; gap: 3px; }
+.cc-srv-search label {
+  display: block; font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.09em; color: #9fb3cc; margin: 0;
+}
+.cc-srv-search input {
+  width: 100%; height: 26px; background-color: rgba(6, 12, 22, 0.85);
+  border: 1px solid rgba(148, 184, 230, 0.22); color: #dbe7f5;
+  border-radius: 7px; padding: 0 9px; font-size: 11.5px; outline: none;
+}
+.cc-srv-search input::placeholder { color: #6c82a0; }
+.cc-srv-search input:focus { border-color: #2f9bff; box-shadow: 0 0 0 3px rgba(47, 155, 255, 0.18); }
 .cc-srv-hostchip {
-  display: inline-flex; align-items: center; gap: 5px; font-size: 9px; color: #9db0c9;
-  background: #0b1728; border: 1px solid #24405f; border-radius: 5px;
-  padding: 5px 6px 5px 8px;
+  display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: #9fb3cc;
+  background: rgba(10, 20, 36, 0.62); border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 7px; padding: 5px 6px 5px 9px;
 }
 .cc-srv-hostchip strong { color: #dbe7f5; }
 .cc-srv-hostchip button {
   appearance: none; border: 0; background: transparent; color: #7fc4ff; cursor: pointer;
-  font-size: 13px; line-height: 1; padding: 0 2px; font-family: inherit;
+  font-size: 14px; line-height: 1; padding: 0 2px; font-family: inherit;
 }
-.cc-srv-table { font-size: 9.5px; }
-.cc-srv-table td { padding: 5px 7px; }
+.cc-srv-table { font-size: 11.5px; }
+.cc-srv-table td { padding: 7px 8px; }
 .cc-srv-table .hostname { color: #e6f0fb; font-weight: 700; }
-.cc-srv-health { font-weight: 800; font-size: 8.3px; text-transform: uppercase; letter-spacing: 0.2px; }
+.cc-srv-health { font-weight: 800; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.2px; }
 .cc-h-healthy { color: #00d47e; }
 .cc-h-warning { color: #ffc107; }
-.cc-h-critical { color: #ff4d67; }
-.cc-h-stale { color: #8ea3bf; }
-.cc-h-maintenance { color: #5fb0ff; }
-.cc-h-unavailable { color: #ff8a3d; }
+.cc-h-critical { color: #ff3b30; }
+.cc-h-stale { color: #8f9298; }
+.cc-h-maintenance { color: #22d3ee; }
+.cc-h-unavailable { color: #a855f7; }
 .cc-srv-util { text-align: right; font-variant-numeric: tabular-nums; }
-.cc-srv-util.hot { color: #ff4d67; font-weight: 700; }
+.cc-srv-util.hot { color: #ff3b30; font-weight: 700; }
 .cc-srv-util.warm { color: #ffc107; }
-.cc-srv-problem { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+.cc-srv-problem { max-width: 340px; overflow: hidden; text-overflow: ellipsis; }
 .cc-srv-pager {
-  display: flex; align-items: center; gap: 10px; justify-content: flex-end; flex-wrap: wrap;
-  padding: 7px 10px; border-top: 1px solid #14253c; color: #8ea3bf; font-size: 9px;
+  display: flex; align-items: center; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
+  padding: 10px 4px 0; margin-top: 4px; border-top: 1px solid rgba(20, 37, 60, 0.8);
+  color: #9fb3cc; font-size: 10.5px;
 }
-.cc-srv-pager select {
-  background: #0b1627; border: 1px solid #203554; color: #dbe7f5; border-radius: 5px;
-  padding: 3px 6px; font-size: 9px; font-family: inherit; cursor: pointer;
+.cc-srv-pager > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+/* Explicit sizing: Grafana's global select rules made this control full-width
+   and very thin inside the flex pager. The arrow is drawn here so the height
+   matches the Prev / Next buttons. */
+.cc-srv-pager > span > select {
+  -webkit-appearance: none; appearance: none;
+  width: 74px; flex: 0 0 74px; height: 27px;
+  box-sizing: border-box;
+  padding: 0 24px 0 9px;
+  font-family: inherit; font-size: 11px; font-weight: 600; line-height: 25px;
+  color: #dbe7f5;
+  background-color: rgba(10, 20, 36, 0.62);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237fc4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 9px 6px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 7px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.18s ease, background-color 0.18s ease;
 }
-.cc-srv-empty { padding: 34px 20px; text-align: center; color: #8ea3bf; font-size: 11px; }
+.cc-srv-pager > span > select:hover {
+  border-color: rgba(127, 196, 255, 0.5);
+  background-color: rgba(47, 155, 255, 0.12);
+}
+.cc-srv-pager > span > select:focus-visible {
+  outline: 2px solid rgba(127, 196, 255, 0.7);
+  outline-offset: 1px;
+}
+.cc-srv-pager > span > select option { background: #0b1626; color: #dbe7f5; }
+.cc-srv-empty { padding: 34px 20px; text-align: center; color: #9fb3cc; font-size: 12px; }
 .cc-srv-error { color: #ffb3bf; }
+
+@media (max-width: 900px) {
+  .cc-srv-brand { flex-wrap: wrap; }
+  .cc-srv-actions { margin-left: 0; }
+}
 `;
 
 function queryParam(query: Record<string, unknown> | undefined, key: string): string | null {
@@ -233,10 +298,27 @@ export function ServerListPage({
   initialConfig?: ZabbixConfig;
 }) {
   const scope = useMemo(() => parseScope(queryParam(query, 'scope')), [query]);
+  const origin = useMemo(
+    () => (queryParam(query, 'from') === 'data-center' ? 'data-center' : 'command-center'),
+    [query]
+  );
+  const backLabel = origin === 'data-center' ? 'Data Center Ops' : 'Command Center';
   const requestedSource = queryParam(query, 'source') === 'live' ? 'live' : 'sample';
   const canGoLive = useMemo(() => isGrafanaHosted(), []);
   const [sampleEnabled, setSampleEnabled] = useState(
     initialConfig ? initialConfig.sampleDataEnabled : true
+  );
+  const [refreshSeconds, setRefreshSeconds] = useState(
+    initialConfig ? initialConfig.refreshSeconds : DEFAULT_ZABBIX_CONFIG.refreshSeconds
+  );
+  const [brandName, setBrandName] = useState(
+    initialConfig ? initialConfig.brandName : DEFAULT_ZABBIX_CONFIG.brandName
+  );
+  const [brandTagline, setBrandTagline] = useState(
+    initialConfig ? initialConfig.brandTagline : DEFAULT_ZABBIX_CONFIG.brandTagline
+  );
+  const [logoUrl, setLogoUrl] = useState(
+    initialConfig ? initialConfig.logoUrl : DEFAULT_ZABBIX_CONFIG.logoUrl
   );
 
   useEffect(() => {
@@ -248,6 +330,10 @@ export function ServerListPage({
       .then((config) => {
         if (!cancelled) {
           setSampleEnabled(config.sampleDataEnabled);
+          setRefreshSeconds(config.refreshSeconds);
+          setBrandName(config.brandName);
+          setBrandTagline(config.brandTagline);
+          setLogoUrl(config.logoUrl);
         }
       })
       .catch(() => {
@@ -267,17 +353,24 @@ export function ServerListPage({
   );
   const [liveError, setLiveError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const liveRef = useRef<LiveResult | null>(null);
+  // Never stack a refresh on top of one that is still in flight (see useOpsData).
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
-    if (source !== 'live') {
+    if (source !== 'live' || fetchingRef.current) {
       return;
     }
     let cancelled = false;
-    setLiveState('loading');
+    fetchingRef.current = true;
+    if (!liveRef.current) {
+      setLiveState('loading');
+    }
     setLiveError(null);
-    fetchZabbixData()
+    fetchLiveData()
       .then((result) => {
         if (!cancelled) {
+          liveRef.current = result;
           setLive(result);
           setLiveState('ready');
         }
@@ -287,11 +380,24 @@ export function ServerListPage({
           setLiveError(err.message || 'Unable to reach the Zabbix API');
           setLiveState('error');
         }
+      })
+      .finally(() => {
+        fetchingRef.current = false;
       });
     return () => {
       cancelled = true;
     };
   }, [source, tick]);
+
+  // Poll on the interval configured in the plugin settings, same as the
+  // Command Center. The manual Refresh button shares this tick counter.
+  useEffect(() => {
+    if (source !== 'live') {
+      return;
+    }
+    const timer = window.setInterval(() => setTick((t) => t + 1), refreshSeconds * 1000);
+    return () => window.clearInterval(timer);
+  }, [source, refreshSeconds]);
 
   const data = source === 'live' ? (live ? live.data : null) : sample;
 
@@ -317,12 +423,28 @@ export function ServerListPage({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [selectedHost, setSelectedHost] = useState<Host | null>(null);
 
   const hosts = data ? data.hosts : [];
   const problems = data ? data.problems : [];
 
   const filteredHosts = useMemo(() => hosts.filter((h) => matchesFilters(h, filters)), [hosts, filters]);
   const hostByHostname = useMemo(() => new Map(hosts.map((h) => [h.hostname, h])), [hosts]);
+
+  const fleet: FleetAverage = useMemo(() => {
+    const count = filteredHosts.length;
+    const average = (key: 'cpu' | 'memory' | 'disk' | 'network') =>
+      count ? filteredHosts.reduce((sum, h) => sum + h[key], 0) / count : 0;
+    return {
+      cpu: average('cpu'),
+      memory: average('memory'),
+      disk: average('disk'),
+      network: average('network'),
+      hosts: count,
+    };
+  }, [filteredHosts]);
+
+  const activeHost = selectedHost ? hosts.find((h) => h.id === selectedHost.id) || null : null;
   const filteredProblems = useMemo(
     () =>
       problems.filter((p) => {
@@ -445,7 +567,8 @@ export function ServerListPage({
       backParams.set(key, filters[key]);
     }
   });
-  const backHref = `${appSubUrl()}/a/acme-command-center-app/command-center?${backParams.toString()}`;
+  const backTarget = origin === 'data-center' ? '/data-center' : '/command-center';
+  const backHref = `${appSubUrl()}/a/acme-command-center-app${backTarget}?${backParams.toString()}`;
 
   const exportCsv = () => {
     if (typeof document === 'undefined') {
@@ -509,22 +632,28 @@ export function ServerListPage({
   const header = (
     <div className="cc-srv-head">
       <a className="cc-srv-back" href={backHref}>
-        ← Command Center
+        ← {backLabel}
       </a>
-      <div className="cc-srv-titles">
-        <div className="cc-srv-title">SERVER INVENTORY</div>
-        <div className="cc-srv-sub">
-          <strong>{meta.title}</strong> — {meta.blurb}{' '}
-          {scopeProblems.length > 0 || meta.problems ? (
-            <>
-              <strong>{scopeProblems.length}</strong> problem{scopeProblems.length === 1 ? '' : 's'} across{' '}
-              <strong>{visibleHosts.length}</strong> server{visibleHosts.length === 1 ? '' : 's'}.
-            </>
-          ) : (
-            <>
-              <strong>{visibleHosts.length}</strong> server{visibleHosts.length === 1 ? '' : 's'}.
-            </>
-          )}
+      <div className="cc-srv-brand">
+        <BrandMark logoUrl={logoUrl} />
+        <div className="cc-srv-titles">
+          <div className="cc-eyebrow">
+            {brandName} <span>·</span> {brandTagline}
+          </div>
+          <div className="cc-srv-title">SERVER INVENTORY</div>
+          <div className="cc-srv-sub">
+            <strong>{meta.title}</strong> — {meta.blurb}{' '}
+            {scopeProblems.length > 0 || meta.problems ? (
+              <>
+                <strong>{scopeProblems.length}</strong> problem{scopeProblems.length === 1 ? '' : 's'} across{' '}
+                <strong>{visibleHosts.length}</strong> server{visibleHosts.length === 1 ? '' : 's'}.
+              </>
+            ) : (
+              <>
+                <strong>{visibleHosts.length}</strong> server{visibleHosts.length === 1 ? '' : 's'}.
+              </>
+            )}
+          </div>
         </div>
       </div>
       <div className="cc-srv-actions">
@@ -532,6 +661,7 @@ export function ServerListPage({
         {live ? (
           <span className="cc-muted" style={{ fontSize: 9 }}>
             sync {live.fetchedAt.toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Singapore' })}
+            {source === 'live' ? ` · auto ${refreshSeconds}s` : ''}
           </span>
         ) : null}
         {source === 'live' ? (
@@ -616,7 +746,18 @@ export function ServerListPage({
       </div>
       {hostFilter ? (
         <span className="cc-srv-hostchip">
-          Host: <strong>{hostFilter}</strong>
+          Host:{' '}
+          {hostByHostname.has(hostFilter) ? (
+            <button
+              type="button"
+              className="cc-host-link"
+              onClick={() => setSelectedHost(hostByHostname.get(hostFilter) || null)}
+            >
+              {hostFilter}
+            </button>
+          ) : (
+            <strong>{hostFilter}</strong>
+          )}
           <button type="button" onClick={clearHostFilter} aria-label="Clear host filter">
             ×
           </button>
@@ -684,7 +825,11 @@ export function ServerListPage({
               return (
                 <tr key={h.id} className="cc-srv-row">
                   <td className="cc-muted">{(currentPage - 1) * pageSize + index + 1}</td>
-                  <td className="hostname">{h.hostname}</td>
+                  <td className="hostname">
+                    <button type="button" className="cc-host-link" onClick={() => setSelectedHost(h)}>
+                      {h.hostname}
+                    </button>
+                  </td>
                   <td>{h.environment}</td>
                   <td>{h.tier}</td>
                   <td>{h.hostGroup}</td>
@@ -773,6 +918,9 @@ export function ServerListPage({
     <div className="cc-app cc-srv">
       <style>{CSS}</style>
       <style>{SRV_CSS}</style>
+      <div className="cc-aurora a1" aria-hidden="true" />
+      <div className="cc-aurora a2" aria-hidden="true" />
+      <div className="cc-aurora a3" aria-hidden="true" />
       {header}
       {filterBar}
       {source === 'live' && liveState === 'error' && live ? (
@@ -785,6 +933,15 @@ export function ServerListPage({
         </div>
       ) : null}
       {body}
+      {activeHost ? (
+        <HostDetailModal
+          host={activeHost}
+          problems={problems}
+          fleet={fleet}
+          source={source}
+          onClose={() => setSelectedHost(null)}
+        />
+      ) : null}
     </div>
   );
 }

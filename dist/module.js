@@ -20,15 +20,34 @@ System.register(['react', '@grafana/data'], (function (exports) {
         yellow: { tone: "#ffc107", bg: "rgba(255, 193, 7, 0.12)" },
         orange: { tone: "#ff8a3d", bg: "rgba(255, 138, 61, 0.12)" },
         purple: { tone: "#8b5cf6", bg: "rgba(139, 92, 246, 0.12)" },
+        cyan: { tone: "#00d4ff", bg: "rgba(0, 212, 255, 0.12)" },
         gray: { tone: "#8ea3bf", bg: "rgba(142, 163, 191, 0.10)" }
       };
       const GROUP_COLOR = {
-        PROD: "#ff3d57",
-        DR: "#2f9bff",
-        UAT: "#8b5cf6"
+        PROD: "#2f9bff",
+        DR: "#8b5cf6",
+        UAT: "#00d4ff"
       };
-      const fmt$1 = (n) => n.toLocaleString("en-US");
-      const pct$1 = (n) => `${n.toFixed(1)}%`;
+      const HEALTH_COLOR$1 = {
+        healthy: "#00d47e",
+        warning: "#ffc107",
+        critical: "#ff3b30",
+        stale: "#8f9298",
+        maintenance: "#22d3ee",
+        unavailable: "#a855f7"
+      };
+      const FILTER_KEYS = ["environment", "tier", "hostGroup", "os", "businessService"];
+      const FILTERS_STORAGE_KEY = "opsbeacon-filters-open";
+      function filtersStorageKey() {
+        if (typeof window === "undefined") {
+          return FILTERS_STORAGE_KEY;
+        }
+        return `${FILTERS_STORAGE_KEY}:${window.location.pathname}`;
+      }
+      const fmt$2 = (n) => n.toLocaleString("en-US");
+      function BrandMark({ logoUrl, className }) {
+        return /* @__PURE__ */ React.createElement("div", { className: `cc-logo${logoUrl ? " cc-logo-image" : ""}${className ? ` ${className}` : ""}`, "aria-hidden": "true" }, logoUrl ? /* @__PURE__ */ React.createElement("img", { src: logoUrl, alt: "" }) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { background: "#28a9ff" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#ffb020" } })));
+      }
       function Icon({ name, size = 16 }) {
         const common = {
           width: size,
@@ -61,20 +80,12 @@ System.register(['react', '@grafana/data'], (function (exports) {
             return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }));
         }
       }
-      function Header({
-        filters,
-        onChange,
-        options,
-        now,
-        source,
-        onSource,
-        connection,
-        version,
-        hostCount,
-        lastSync,
-        canGoLive,
-        sampleEnabled = true
-      }) {
+      function HeaderClock() {
+        const [now, setNow] = useState(() => /* @__PURE__ */ new Date());
+        useEffect(() => {
+          const timer = window.setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
+          return () => window.clearInterval(timer);
+        }, []);
         const date = now.toLocaleDateString("en-GB", {
           weekday: "short",
           day: "2-digit",
@@ -89,7 +100,68 @@ System.register(['react', '@grafana/data'], (function (exports) {
           second: "2-digit",
           timeZone: "Asia/Singapore"
         });
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-header" }, /* @__PURE__ */ React.createElement("div", { className: "cc-brand" }, /* @__PURE__ */ React.createElement("div", { className: "cc-logo" }, /* @__PURE__ */ React.createElement("span", { style: { background: "#28a9ff" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#ffb020" } })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-title" }, "INFRASTRUCTURE OPERATIONS COMMAND CENTER"), /* @__PURE__ */ React.createElement("div", { className: "cc-subtitle" }, "All Servers\xA0\xA0|\xA0\xA0500 - 1,500 Servers\xA0\xA0|\xA0\xA0Real-time Infrastructure Health from Zabbix"))), /* @__PURE__ */ React.createElement("div", { className: "cc-filters" }, /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Environment"), /* @__PURE__ */ React.createElement("select", { value: filters.environment, onChange: (e) => onChange("environment", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.environments.map((o) => /* @__PURE__ */ React.createElement("option", { key: o.value, value: o.value }, o.label)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "System Tier"), /* @__PURE__ */ React.createElement("select", { value: filters.tier, onChange: (e) => onChange("tier", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.tiers.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Host Group"), /* @__PURE__ */ React.createElement("select", { value: filters.hostGroup, onChange: (e) => onChange("hostGroup", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.groups.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "OS Type"), /* @__PURE__ */ React.createElement("select", { value: filters.os, onChange: (e) => onChange("os", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.os.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Business Service"), /* @__PURE__ */ React.createElement("select", { value: filters.businessService, onChange: (e) => onChange("businessService", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.services.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o))))), /* @__PURE__ */ React.createElement("div", { className: "cc-header-right" }, canGoLive ? sampleEnabled ? /* @__PURE__ */ React.createElement("div", { className: "cc-mode" }, /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-clock" }, /* @__PURE__ */ React.createElement("div", { className: "cc-clock-date" }, date), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-time" }, time), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-zone" }, "(GMT+8)"));
+      }
+      function Header({
+        filters,
+        onChange,
+        options,
+        source,
+        onSource,
+        connection,
+        version,
+        hostCount,
+        lastSync,
+        canGoLive,
+        sampleEnabled = true,
+        brandName = "OPSBEACON",
+        brandTagline = "REAL-TIME INFRASTRUCTURE HEALTH",
+        logoUrl,
+        title = "INFRASTRUCTURE OPERATIONS COMMAND CENTER",
+        subtitle = "All Servers  |  500 - 1,500 Servers  |  Real-time Infrastructure Health from Zabbix"
+      }) {
+        const [filtersOpen, setFiltersOpen] = useState(() => {
+          if (typeof window === "undefined") {
+            return true;
+          }
+          try {
+            return window.localStorage.getItem(filtersStorageKey()) !== "closed";
+          } catch (e) {
+            return true;
+          }
+        });
+        useEffect(() => {
+          try {
+            window.localStorage.setItem(filtersStorageKey(), filtersOpen ? "open" : "closed");
+          } catch (e) {
+          }
+        }, [filtersOpen]);
+        const activeValues = FILTER_KEYS.map((key) => filters[key]).filter((value) => value !== "All");
+        const filtersActive = activeValues.length > 0;
+        const resetFilters = () => FILTER_KEYS.forEach((key) => onChange(key, "All"));
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-header" }, /* @__PURE__ */ React.createElement("div", { className: "cc-brand" }, /* @__PURE__ */ React.createElement(BrandMark, { logoUrl }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-eyebrow" }, brandName, " ", /* @__PURE__ */ React.createElement("span", null, "\xB7"), " ", brandTagline), /* @__PURE__ */ React.createElement("div", { className: "cc-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "cc-subtitle" }, subtitle))), /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: `cc-header-filters${filtersOpen ? "" : " collapsed"}${filtersActive ? " is-filtered" : ""}`,
+            role: "group",
+            "aria-label": "Dashboard filters"
+          },
+          /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "cc-filter-toggle",
+              "aria-expanded": filtersOpen,
+              title: filtersOpen ? "Hide filters" : "Show filters",
+              onClick: () => setFiltersOpen((open) => !open)
+            },
+            /* @__PURE__ */ React.createElement("span", { className: "cc-filter-caret", "aria-hidden": "true" }, "\u25BE"),
+            /* @__PURE__ */ React.createElement("span", null, "Filters"),
+            filtersActive ? /* @__PURE__ */ React.createElement("span", { className: "cc-filter-badge" }, activeValues.length) : null
+          ),
+          /* @__PURE__ */ React.createElement("span", { className: "cc-filter-summary", hidden: !filtersActive }, activeValues.join(" \xB7 ")),
+          /* @__PURE__ */ React.createElement("div", { className: "cc-filter-controls" }, /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Environment"), /* @__PURE__ */ React.createElement("select", { value: filters.environment, onChange: (e) => onChange("environment", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.environments.map((o) => /* @__PURE__ */ React.createElement("option", { key: o.value, value: o.value }, o.label)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "System Tier"), /* @__PURE__ */ React.createElement("select", { value: filters.tier, onChange: (e) => onChange("tier", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.tiers.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Host Group"), /* @__PURE__ */ React.createElement("select", { value: filters.hostGroup, onChange: (e) => onChange("hostGroup", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.groups.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "OS Type"), /* @__PURE__ */ React.createElement("select", { value: filters.os, onChange: (e) => onChange("os", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.os.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Business Service"), /* @__PURE__ */ React.createElement("select", { value: filters.businessService, onChange: (e) => onChange("businessService", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.services.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-filter-reset", title: "Reset filters", onClick: resetFilters }, "Reset"))
+        ), /* @__PURE__ */ React.createElement("div", { className: "cc-header-right" }, canGoLive ? sampleEnabled ? /* @__PURE__ */ React.createElement("div", { className: "cc-mode" }, /* @__PURE__ */ React.createElement(
           "button",
           {
             type: "button",
@@ -105,13 +177,73 @@ System.register(['react', '@grafana/data'], (function (exports) {
             onClick: () => onSource("live")
           },
           "LIVE"
-        )) : /* @__PURE__ */ React.createElement("div", { className: "cc-mode", title: "Sample data is disabled in the plugin configuration" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mode-note" }, "LIVE ONLY")) : null, /* @__PURE__ */ React.createElement("div", { className: "cc-clock" }, /* @__PURE__ */ React.createElement("div", { className: "cc-clock-date" }, date), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-time" }, time), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-zone" }, "(GMT+8)")), /* @__PURE__ */ React.createElement("div", { className: `cc-zabbix is-${connection}` }, /* @__PURE__ */ React.createElement("span", { className: "cc-zabbix-dot" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-label" }, "ZABBIX"), /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-sub" }, connection === "sample" ? "Sample dataset \xB7 no API calls" : connection === "loading" ? "Connecting to Zabbix API\u2026" : connection === "ready" ? `v${version || "?"} \xB7 ${fmt$1(hostCount || 0)} hosts \xB7 sync ${lastSync || "\u2014"}` : "Connection failed")), /* @__PURE__ */ React.createElement(
+        )) : /* @__PURE__ */ React.createElement("div", { className: "cc-mode", title: "Sample data is disabled in the plugin configuration" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mode-note" }, "LIVE ONLY")) : null, /* @__PURE__ */ React.createElement(HeaderClock, null), /* @__PURE__ */ React.createElement("div", { className: `cc-zabbix is-${connection}` }, /* @__PURE__ */ React.createElement("span", { className: "cc-zabbix-dot" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-label" }, "ZABBIX"), /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-sub" }, connection === "sample" ? "Sample dataset \xB7 no API calls" : connection === "loading" ? "Connecting to Zabbix API\u2026" : connection === "ready" ? `v${version || "?"} \xB7 ${fmt$2(hostCount || 0)} hosts \xB7 sync ${lastSync || "\u2014"}` : "Connection failed")), /* @__PURE__ */ React.createElement(
           "span",
           {
             className: `cc-sample-badge ${connection === "ready" ? "is-live" : ""} ${connection === "error" ? "is-error" : ""}`
           },
           connection === "sample" ? "SAMPLE" : connection === "loading" ? "SYNC" : connection === "ready" ? "LIVE" : "ERROR"
         ))));
+      }
+      const SEVERITY_RANK = { Critical: 0, High: 1, Warning: 2, Info: 3 };
+      function LiveProblemsTicker({
+        problems,
+        onHost
+      }) {
+        const ranked = useMemo(() => {
+          const sorted = [...problems].sort(
+            (a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) || b.minutesAgo - a.minutesAgo
+          );
+          const take = (group, n) => sorted.filter((p) => p.severityGroup === group).slice(0, n);
+          const picks = [...take("Critical", 10), ...take("Warning", 3), ...take("Info", 1)];
+          const seen = new Set(picks.map((p) => p.id));
+          for (const p of sorted) {
+            if (picks.length >= 14) {
+              break;
+            }
+            if (!seen.has(p.id)) {
+              picks.push(p);
+              seen.add(p.id);
+            }
+          }
+          return picks;
+        }, [problems]);
+        const items = ranked;
+        const trackRef = useRef(null);
+        const [duration, setDuration] = useState(80);
+        useEffect(() => {
+          const track = trackRef.current;
+          if (!track) {
+            return;
+          }
+          const measure = () => {
+            const setWidth = track.scrollWidth / 2;
+            if (setWidth > 0) {
+              setDuration(Math.min(400, Math.max(45, Math.round(setWidth / 46))));
+            }
+          };
+          measure();
+          if (typeof ResizeObserver === "undefined") {
+            return;
+          }
+          const observer = new ResizeObserver(measure);
+          observer.observe(track);
+          return () => observer.disconnect();
+        }, [items.length]);
+        if (items.length === 0) {
+          return null;
+        }
+        const renderSet = (hidden) => /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-set", "aria-hidden": hidden ? "true" : void 0 }, items.map((p, i) => /* @__PURE__ */ React.createElement("span", { className: "cc-ticker-item", key: `${p.id}-${i}` }, /* @__PURE__ */ React.createElement("span", { className: `cc-sev cc-ticker-sev cc-sev-${p.severity.toLowerCase()}` }, p.severity), p.problem, onHost ? /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "cc-ticker-host",
+            tabIndex: hidden ? -1 : void 0,
+            onClick: () => onHost(p.hostname)
+          },
+          p.hostname
+        ) : /* @__PURE__ */ React.createElement("b", null, p.hostname), /* @__PURE__ */ React.createElement("em", null, p.duration))), /* @__PURE__ */ React.createElement("span", { className: "cc-ticker-gap", key: "gap-end", "aria-hidden": "true" }));
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-ticker", "aria-label": "Active problems" }, /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-label" }, /* @__PURE__ */ React.createElement("span", { className: "cc-live-dot amber", "aria-hidden": "true" }), "LIVE PROBLEMS"), /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-viewport" }, /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-track", ref: trackRef, style: { animationDuration: `${duration}s` } }, renderSet(false), renderSet(true))));
       }
       function Kpi({
         icon,
@@ -126,51 +258,24 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const t = TONE[tone];
         const body = /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 15 })), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-body" }, /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-value" }, value), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-sub" }, sub, delta ? /* @__PURE__ */ React.createElement("span", { className: "cc-kpi-delta", style: { color: deltaTone === "good" ? "#00d47e" : "#ff8a3d" } }, delta) : null)));
         const style = { "--tone": t.tone, "--tone-bg": t.bg };
+        const alert = tone === "red";
+        const className = `cc-kpi${alert ? " cc-kpi-alert" : ""}`;
+        const beam = alert ? /* @__PURE__ */ React.createElement("span", { className: "cc-beam", "aria-hidden": "true" }) : null;
         if (href) {
           return /* @__PURE__ */ React.createElement(
             "a",
             {
-              className: "cc-kpi cc-kpi-link",
+              className: `${className} cc-kpi-link`,
               style,
+              "data-tone": tone,
               href,
               title: `Open the server list for ${label.toLowerCase()}`
             },
+            beam,
             body
           );
         }
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-kpi", style }, body);
-      }
-      function Donut({
-        segments,
-        size = 88,
-        centerValue,
-        centerLabel
-      }) {
-        const r = 38;
-        const circumference = 2 * Math.PI * r;
-        const total = segments.reduce((sum, s) => sum + s.value, 0) || 1;
-        let offset = 0;
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-donut", style: { width: size, height: size } }, /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 100 100" }, /* @__PURE__ */ React.createElement("circle", { cx: "50", cy: "50", r, fill: "none", stroke: "#12233c", strokeWidth: "10" }), segments.map((s, i) => {
-          const length = s.value / total * circumference;
-          const dash = Math.max(0, length - 1.2);
-          const circle = /* @__PURE__ */ React.createElement(
-            "circle",
-            {
-              key: i,
-              cx: "50",
-              cy: "50",
-              r,
-              fill: "none",
-              stroke: s.color,
-              strokeWidth: "10",
-              strokeDasharray: `${dash} ${circumference - dash}`,
-              strokeDashoffset: -offset,
-              transform: "rotate(-90 50 50)"
-            }
-          );
-          offset += length;
-          return circle;
-        })), /* @__PURE__ */ React.createElement("div", { className: "cc-donut-center" }, /* @__PURE__ */ React.createElement("div", { className: "cc-donut-value" }, centerValue), /* @__PURE__ */ React.createElement("div", { className: "cc-donut-unit" }, centerLabel)));
+        return /* @__PURE__ */ React.createElement("div", { className, style, "data-tone": tone }, beam, body);
       }
       function UtilCard({
         title,
@@ -181,33 +286,28 @@ System.register(['react', '@grafana/data'], (function (exports) {
         normal,
         accent
       }) {
-        const bars = Array.from({ length: 36 }, (_, i) => {
-          const wave = Math.abs(Math.sin(i * 0.63 + avg * 0.12));
-          return 16 + wave * 66 + i * 7 % 11;
-        });
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, sub)), /* @__PURE__ */ React.createElement("div", { className: "cc-util-body" }, /* @__PURE__ */ React.createElement(
-          Donut,
+        const rounded = Math.round(avg);
+        const band = avg >= 90 ? { color: "#ff4d67", label: "Critical" } : avg >= 70 ? { color: "#ffc107", label: "Warning" } : { color: "#00d47e", label: "Normal" };
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel", style: { "--accent": accent } }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, sub)), /* @__PURE__ */ React.createElement("div", { className: "cc-util-body" }, /* @__PURE__ */ React.createElement(
+          "div",
           {
-            segments: [
-              { value: critical, color: "#ff3d57" },
-              { value: warning, color: "#ffc107" },
-              { value: normal, color: "#00d47e" }
-            ],
-            size: 88,
-            centerValue: `${Math.round(avg)}%`,
-            centerLabel: "Avg"
-          }
-        ), /* @__PURE__ */ React.createElement("div", { className: "cc-bars" }, bars.map((h, i) => /* @__PURE__ */ React.createElement(
-          "span",
+            className: "cc-ring",
+            style: { "--p": rounded, "--fill": band.color },
+            role: "img",
+            "aria-label": `${title}: ${rounded}% average, ${band.label} band`
+          },
+          /* @__PURE__ */ React.createElement("div", { className: "cc-ring-inner" }, /* @__PURE__ */ React.createElement("strong", null, rounded, "%"), /* @__PURE__ */ React.createElement("span", null, "avg"))
+        ), /* @__PURE__ */ React.createElement("div", { className: "cc-util-right" }, /* @__PURE__ */ React.createElement(
+          "div",
           {
-            key: i,
-            className: "cc-bar",
-            style: {
-              height: `${Math.min(100, h)}%`,
-              background: `linear-gradient(180deg, ${i % 3 === 0 ? accent : "#2f6fff"}, rgba(20, 60, 130, 0.35))`
-            }
-          }
-        ))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend" }, /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ff3d57" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Critical (\u2265 90%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$1(critical))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ffc107" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Warning (70\u201390%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$1(warning))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Normal (< 70%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$1(normal))))));
+            className: "cc-stackbar",
+            role: "img",
+            "aria-label": `${fmt$2(critical)} critical, ${fmt$2(warning)} warning, ${fmt$2(normal)} normal`
+          },
+          /* @__PURE__ */ React.createElement("span", { className: "cc-seg crit", style: { flexGrow: critical } }),
+          /* @__PURE__ */ React.createElement("span", { className: "cc-seg warn", style: { flexGrow: warning } }),
+          /* @__PURE__ */ React.createElement("span", { className: "cc-seg ok", style: { flexGrow: normal } })
+        ), /* @__PURE__ */ React.createElement("div", { className: "cc-legend" }, /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ff4d67" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Critical (\u2265 90%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(critical))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ffc107" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Warning (70\u201390%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(warning))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Normal (< 70%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(normal)))))));
       }
       function groupCounts(hosts) {
         return {
@@ -219,28 +319,32 @@ System.register(['react', '@grafana/data'], (function (exports) {
           unavailable: hosts.filter((h) => h.health === "unavailable").length
         };
       }
+      function GroupPanel({
+        group: g,
+        onSelect
+      }) {
+        const c = groupCounts(g.tiers.flatMap((t) => t.hosts));
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-group", style: { "--group": GROUP_COLOR[g.key] } }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-name" }, /* @__PURE__ */ React.createElement("span", { className: `cc-env-dot ${g.key.toLowerCase()}`, "aria-hidden": "true" }), g.name, /* @__PURE__ */ React.createElement("span", { className: "cc-group-total" }, fmt$2(g.total))), /* @__PURE__ */ React.createElement("div", { className: "cc-group-legend" }, /* @__PURE__ */ React.createElement("span", { className: "cc-lg ok" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.healthy), " healthy"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg warn" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.warning), " warning"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg crit" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.critical), " critical"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg other" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.stale + c.maintenance + c.unavailable), " other"))), /* @__PURE__ */ React.createElement("div", { className: "cc-grid-wrap" }, g.tiers.map((tier) => {
+          const tc = groupCounts(tier.hosts);
+          return /* @__PURE__ */ React.createElement("div", { className: "cc-tier-row", key: tier.name }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-label" }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-title" }, tier.name), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-sub" }, tier.subtitle, " (", fmt$2(tier.hosts.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-counts" }, /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.healthy }, title: `${tc.healthy} healthy` }, tc.healthy), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.warning }, title: `${tc.warning} warning` }, tc.warning), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.critical }, title: `${tc.critical} critical` }, tc.critical), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.stale }, title: `${tc.stale} stale` }, tc.stale))), /* @__PURE__ */ React.createElement("div", { className: "cc-host-grid" }, tier.hosts.map((h) => /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              key: h.id,
+              type: "button",
+              className: `cc-cell cc-cell-btn cc-cell-${h.health}`,
+              title: `${h.hostname} \xB7 ${h.health} \xB7 CPU ${h.cpu}% \xB7 Memory ${h.memory}% \xB7 Disk ${h.disk}%`,
+              "aria-label": `Open server statistics for ${h.hostname}, health ${h.health}`,
+              tabIndex: -1,
+              onClick: () => onSelect && onSelect(h)
+            }
+          )), tier.hosts.length === 0 ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "No hosts match filters") : null));
+        })), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-inline" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.healthy } }), " Healthy"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.warning } }), " Warning"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.critical } }), " Critical"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot cc-dot-stale" }), " Stale"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.maintenance } }), " Maintenance"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.unavailable } }), " Unavailable")));
+      }
       function GroupGrids({
         groups,
         onSelect
       }) {
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-groups" }, groups.map((g) => {
-          const c = groupCounts(g.tiers.flatMap((t) => t.hosts));
-          return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-group", key: g.key, style: { "--group": GROUP_COLOR[g.key] } }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-name" }, g.name), /* @__PURE__ */ React.createElement("div", { className: "cc-group-total" }, "(", fmt$1(g.total), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-group-chips" }, /* @__PURE__ */ React.createElement("span", { className: "cc-chip cc-chip-green" }, "\u25CF ", c.healthy), /* @__PURE__ */ React.createElement("span", { className: "cc-chip cc-chip-yellow" }, "\u25CF ", c.warning), /* @__PURE__ */ React.createElement("span", { className: "cc-chip cc-chip-red" }, "\u25CF ", c.critical), /* @__PURE__ */ React.createElement("span", { className: "cc-chip cc-chip-gray" }, "\u25CF ", c.stale))), /* @__PURE__ */ React.createElement("div", { className: "cc-grid-wrap" }, g.tiers.map((tier) => {
-            const tc = groupCounts(tier.hosts);
-            return /* @__PURE__ */ React.createElement("div", { className: "cc-tier-row", key: tier.name }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-label" }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-title" }, tier.name), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-sub" }, tier.subtitle, " (", fmt$1(tier.hosts.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-counts" }, /* @__PURE__ */ React.createElement("span", { style: { color: "#00e676" } }, tc.healthy), /* @__PURE__ */ React.createElement("span", { style: { color: "#ffc107" } }, tc.warning), /* @__PURE__ */ React.createElement("span", { style: { color: "#ff3d57" } }, tc.critical), /* @__PURE__ */ React.createElement("span", { style: { color: "#8ea3bf" } }, tc.stale))), /* @__PURE__ */ React.createElement("div", { className: "cc-host-grid" }, tier.hosts.map((h) => /* @__PURE__ */ React.createElement(
-              "button",
-              {
-                key: h.id,
-                type: "button",
-                className: `cc-cell cc-cell-btn cc-cell-${h.health}`,
-                title: `${h.hostname} \xB7 ${h.health} \xB7 CPU ${h.cpu}% \xB7 Memory ${h.memory}% \xB7 Disk ${h.disk}%`,
-                "aria-label": `Open server statistics for ${h.hostname}, health ${h.health}`,
-                tabIndex: -1,
-                onClick: () => onSelect && onSelect(h)
-              }
-            )), tier.hosts.length === 0 ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "No hosts match filters") : null));
-          })), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-inline" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: "#00d47e" } }), " Healthy"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: "#ffc107" } }), " Warning"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: "#ff3d57" } }), " Critical"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: "#67768a" } }), " Stale"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: "#3b82f6" } }), " Maintenance"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: "#9f1239" } }), " Unavailable")));
-        }));
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-groups" }, groups.map((g) => /* @__PURE__ */ React.createElement(GroupPanel, { key: g.key, group: g, onSelect })));
       }
       function rowLinkProps(href) {
         if (!href) {
@@ -280,7 +384,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
             },
             r.name,
             /* @__PURE__ */ React.createElement("span", { className: "cc-row-arrow" }, "\u203A")
-          ) : r.name), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.env), /* @__PURE__ */ React.createElement("td", { className: "num" }, fmt$1(r.servers)), /* @__PURE__ */ React.createElement("td", { className: `cc-status cc-status-${r.status.toLowerCase()}` }, r.status), /* @__PURE__ */ React.createElement("td", { className: "num", style: { color: r.activeProblems > 0 ? "#ff8a3d" : "#00d47e" } }, r.activeProblems));
+          ) : r.name), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.env), /* @__PURE__ */ React.createElement("td", { className: "num" }, fmt$2(r.servers)), /* @__PURE__ */ React.createElement("td", { className: `cc-status cc-status-${r.status.toLowerCase()}` }, r.status), /* @__PURE__ */ React.createElement("td", { className: "num", style: { color: r.activeProblems > 0 ? "#ff8a3d" : "#00d47e" } }, r.activeProblems));
         }), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "cc-muted" }, "No services match the current filters.")) : null))));
       }
       function statusClass(status) {
@@ -304,26 +408,6 @@ System.register(['react', '@grafana/data'], (function (exports) {
           ) : r.name), /* @__PURE__ */ React.createElement("td", { className: statusClass(r.prodStatus) }, r.prodStatus), /* @__PURE__ */ React.createElement("td", { className: statusClass(r.drStatus) }, r.drStatus), /* @__PURE__ */ React.createElement("td", { style: { color: r.replicationLag.includes("1h") ? "#ff4d67" : "#b9c9dd" } }, r.replicationLag), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.lastSync));
         }), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 5, className: "cc-muted" }, "No DR components are defined in Zabbix.")) : null))));
       }
-      function FreshnessPanel({
-        counts,
-        total
-      }) {
-        const safeTotal = total || 1;
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-freshness" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Monitoring Data Freshness")), /* @__PURE__ */ React.createElement("div", { className: "cc-freshness-body" }, /* @__PURE__ */ React.createElement(
-          Donut,
-          {
-            segments: [
-              { value: counts.upToDate, color: "#00d47e" },
-              { value: counts.stale, color: "#ffc107" },
-              { value: counts.noData, color: "#ff3d57" },
-              { value: counts.notMonitored, color: "#5f7591" }
-            ],
-            size: 108,
-            centerValue: fmt$1(total),
-            centerLabel: "Total Hosts"
-          }
-        ), /* @__PURE__ */ React.createElement("div", { className: "cc-freshness-legend" }, /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Up to date"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$1(counts.upToDate), " (", pct$1(counts.upToDate / safeTotal * 100), ")")), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ffc107" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Stale (5\u201310m)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$1(counts.stale), " (", pct$1(counts.stale / safeTotal * 100), ")")), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ff3d57" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "No data (>10m)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$1(counts.noData), " (", pct$1(counts.noData / safeTotal * 100), ")")), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#5f7591" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Not monitored"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$1(counts.notMonitored), " (", pct$1(counts.notMonitored / safeTotal * 100), ")")))));
-      }
       function Sparkline$1({ values, color }) {
         const w = 64;
         const h = 18;
@@ -344,7 +428,8 @@ System.register(['react', '@grafana/data'], (function (exports) {
       function TopServersPanel({
         rows,
         resource,
-        onResource
+        onResource,
+        onHost
       }) {
         const value = (r) => r[resource];
         return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Top 10 Servers by Resource Utilisation"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, RESOURCE_LABEL[resource])), /* @__PURE__ */ React.createElement("div", { className: "cc-tabs" }, ["cpu", "memory", "disk"].map((r) => /* @__PURE__ */ React.createElement(
@@ -356,7 +441,17 @@ System.register(['react', '@grafana/data'], (function (exports) {
             onClick: () => onResource(r)
           },
           RESOURCE_LABEL[r]
-        ))), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Env"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", { className: "num" }, RESOURCE_LABEL[resource]), /* @__PURE__ */ React.createElement("th", null, "Trend (24h)"))), /* @__PURE__ */ React.createElement("tbody", null, rows.slice(0, 10).map((r, i) => /* @__PURE__ */ React.createElement("tr", { key: r.hostname }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, r.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("div", { className: "cc-bar-cell" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-track" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-fill", style: { width: `${value(r)}%`, background: RESOURCE_COLOR[resource] } })), /* @__PURE__ */ React.createElement("span", { style: { color: RESOURCE_COLOR[resource], fontWeight: 700 } }, value(r), "%"))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Sparkline$1, { values: r.trends[resource], color: RESOURCE_COLOR[resource] })))), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "cc-muted" }, "No hosts match the current filters.")) : null))));
+        ))), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Env"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", { className: "num" }, RESOURCE_LABEL[resource]), /* @__PURE__ */ React.createElement("th", null, "Trend (24h)"))), /* @__PURE__ */ React.createElement("tbody", null, rows.slice(0, 10).map((r, i) => /* @__PURE__ */ React.createElement("tr", { key: r.hostname }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(r.hostname) }, r.hostname) : r.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("div", { className: "cc-bar-cell" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-track" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-fill", style: { width: `${value(r)}%`, background: RESOURCE_COLOR[resource] } })), /* @__PURE__ */ React.createElement("span", { style: { color: RESOURCE_COLOR[resource], fontWeight: 700 } }, value(r), "%"))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Sparkline$1, { values: r.trends[resource], color: RESOURCE_COLOR[resource] })))), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "cc-muted" }, "No hosts match the current filters.")) : null))));
+      }
+      const ENV_ORDER = { PROD: 0, DR: 1, UAT: 2 };
+      function MaintenanceTable({
+        hosts,
+        onHost
+      }) {
+        const rows = [...hosts].sort(
+          (a, b) => (ENV_ORDER[a.environment] ?? 9) - (ENV_ORDER[b.environment] ?? 9) || a.tier.localeCompare(b.tier) || a.hostname.localeCompare(b.hostname)
+        );
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Servers in Maintenance (", fmt$2(hosts.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, "Not counted as available while the maintenance window is active")), /* @__PURE__ */ React.createElement("div", { className: "cc-maintenance-scroll" }, /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-maintenance-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", { className: "cc-col-secondary" }, "Business Service"), /* @__PURE__ */ React.createElement("th", { className: "cc-col-secondary" }, "OS"), /* @__PURE__ */ React.createElement("th", null, "Last Data"), /* @__PURE__ */ React.createElement("th", null, "State"))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((h, i) => /* @__PURE__ */ React.createElement("tr", { key: h.id }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(h.hostname) }, h.hostname) : h.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", { className: "cc-muted cc-col-secondary" }, h.businessService), /* @__PURE__ */ React.createElement("td", { className: "cc-muted cc-col-secondary" }, h.os), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, fmt$2(h.lastSeenMin), "m ago"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "cc-maintenance-state" }, /* @__PURE__ */ React.createElement("i", { "aria-hidden": "true" }), "Maintenance")))), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "cc-muted" }, "No servers are in maintenance for the current filters.")) : null)))));
       }
       function severityClass(s) {
         return `cc-sev cc-sev-${s.toLowerCase()}`;
@@ -373,12 +468,15 @@ System.register(['react', '@grafana/data'], (function (exports) {
         onTab,
         counts,
         source,
-        refreshSeconds
+        refreshSeconds,
+        onHost,
+        title = "Active Problems",
+        tabs = ["All", "Critical", "Warning", "Info"]
       }) {
         const refreshLabel = refreshSeconds && refreshSeconds >= 60 && refreshSeconds % 60 === 0 ? `${refreshSeconds / 60}m` : `${refreshSeconds || 60}s`;
         const visible = problems.filter((p) => tab === "All" || p.severityGroup === tab);
-        const shown = visible.slice(0, 10);
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-problems" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Active Zabbix Problems (", fmt$1(problems.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, source === "live" ? "Live Zabbix API \xB7 read-only" : "Sample data mode \xB7 read-only")), /* @__PURE__ */ React.createElement("div", { className: "cc-problem-tabs" }, ["All", "Critical", "Warning", "Info"].map((t) => /* @__PURE__ */ React.createElement("button", { key: t, type: "button", className: `cc-tab ${tab === t ? "active" : ""}`, onClick: () => onTab(t) }, t, " (", fmt$1(counts[t] ?? 0), ")")), /* @__PURE__ */ React.createElement("span", { className: "cc-spacer" }), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "Showing ", shown.length, " of ", visible.length)), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-problem-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Time"), /* @__PURE__ */ React.createElement("th", null, "Severity"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", null, "Business Service"), /* @__PURE__ */ React.createElement("th", null, "Problem"), /* @__PURE__ */ React.createElement("th", null, "Current Value"), /* @__PURE__ */ React.createElement("th", null, "Threshold"), /* @__PURE__ */ React.createElement("th", null, "Duration"), /* @__PURE__ */ React.createElement("th", null, "SLA Status"), /* @__PURE__ */ React.createElement("th", null, "Ack"), /* @__PURE__ */ React.createElement("th", null, "Maintenance"), /* @__PURE__ */ React.createElement("th", null, "Related / Impact"))), /* @__PURE__ */ React.createElement("tbody", null, shown.map((p, i) => /* @__PURE__ */ React.createElement("tr", { key: p.id }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.time), /* @__PURE__ */ React.createElement("td", { className: severityClass(p.severity) }, p.severity), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, p.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.businessService), /* @__PURE__ */ React.createElement("td", null, p.problem), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, p.currentValue), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.threshold), /* @__PURE__ */ React.createElement("td", { className: "cc-duration" }, p.duration), /* @__PURE__ */ React.createElement("td", { className: slaClass(p.sla) }, p.sla), /* @__PURE__ */ React.createElement("td", { className: p.ack ? "cc-ack-yes" : "cc-ack-no" }, p.ack ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: p.maintenance ? "cc-ack-yes" : "cc-muted" }, p.maintenance ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: "cc-related" }, "\u21B3 ", p.related))), shown.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 15, className: "cc-muted" }, "No problems in this view.")) : null))), /* @__PURE__ */ React.createElement("div", { className: "cc-footer" }, /* @__PURE__ */ React.createElement("span", null, source === "live" ? `Data source: Zabbix API \xB7 read-only \xB7 refresh: ${refreshLabel}` : "Data source: deterministic sample dataset (1,268 hosts, 76 problems) \xB7 no Zabbix calls"), /* @__PURE__ */ React.createElement("span", null, "Time zone: GMT+8")));
+        const shown = visible;
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-problems" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, title, " (", fmt$2(problems.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, source === "live" ? "Live Zabbix API \xB7 read-only" : "Sample data mode \xB7 read-only")), /* @__PURE__ */ React.createElement("div", { className: "cc-problem-tabs" }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t, type: "button", className: `cc-tab ${tab === t ? "active" : ""}`, onClick: () => onTab(t) }, t, " (", fmt$2(counts[t] ?? 0), ")")), /* @__PURE__ */ React.createElement("span", { className: "cc-spacer" }), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "Showing ", fmt$2(shown.length), " of ", fmt$2(problems.length))), /* @__PURE__ */ React.createElement("div", { className: "cc-problem-scroll" }, /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-problem-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Time"), /* @__PURE__ */ React.createElement("th", null, "Severity"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", null, "Business Service"), /* @__PURE__ */ React.createElement("th", null, "Problem"), /* @__PURE__ */ React.createElement("th", null, "Current Value"), /* @__PURE__ */ React.createElement("th", null, "Threshold"), /* @__PURE__ */ React.createElement("th", null, "Duration"), /* @__PURE__ */ React.createElement("th", null, "SLA Status"), /* @__PURE__ */ React.createElement("th", null, "Ack"), /* @__PURE__ */ React.createElement("th", null, "Maintenance"), /* @__PURE__ */ React.createElement("th", null, "Related / Impact"))), /* @__PURE__ */ React.createElement("tbody", null, shown.map((p, i) => /* @__PURE__ */ React.createElement("tr", { key: p.id }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.time), /* @__PURE__ */ React.createElement("td", { className: severityClass(p.severity) }, p.severity), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(p.hostname) }, p.hostname) : p.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.businessService), /* @__PURE__ */ React.createElement("td", null, p.problem), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, p.currentValue), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.threshold), /* @__PURE__ */ React.createElement("td", { className: "cc-duration" }, p.duration), /* @__PURE__ */ React.createElement("td", { className: slaClass(p.sla) }, p.sla), /* @__PURE__ */ React.createElement("td", { className: p.ack ? "cc-ack-yes" : "cc-ack-no" }, p.ack ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: p.maintenance ? "cc-ack-yes" : "cc-muted" }, p.maintenance ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: "cc-related" }, "\u21B3 ", p.related))), shown.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 15, className: "cc-muted" }, "No problems in this view.")) : null)))), /* @__PURE__ */ React.createElement("div", { className: "cc-footer" }, /* @__PURE__ */ React.createElement("span", null, source === "live" ? `Data source: Zabbix API \xB7 read-only \xB7 refresh: ${refreshLabel}` : "Data source: deterministic sample dataset (1,268 hosts, 76 problems) \xB7 no Zabbix calls"), /* @__PURE__ */ React.createElement("span", null, "Time zone: GMT+8")));
       }
 
       const PLUGIN_ID = "acme-command-center-app";
@@ -393,7 +491,10 @@ System.register(['react', '@grafana/data'], (function (exports) {
         publicPath: "zabbix-public",
         refreshSeconds: 60,
         sampleDataEnabled: true,
-        defaultSource: "sample"
+        defaultSource: "sample",
+        brandName: "OPSBEACON",
+        brandTagline: "REAL-TIME INFRASTRUCTURE HEALTH",
+        logoUrl: ""
       };
       function resolveSource(requested, canGoLive, sampleDataEnabled) {
         if (!canGoLive) {
@@ -457,6 +558,31 @@ System.register(['react', '@grafana/data'], (function (exports) {
         }
         return `${parsed.origin}${path.replace(/\/{2,}/g, "/")}`;
       }
+      const MAX_LOGO_CHARS = 4e5;
+      function normalizeBrandName(value) {
+        const text = typeof value === "string" ? value.trim().slice(0, 40) : "";
+        return text || DEFAULT_ZABBIX_CONFIG.brandName;
+      }
+      function normalizeBrandTagline(value) {
+        const text = typeof value === "string" ? value.trim().slice(0, 80) : "";
+        return text || DEFAULT_ZABBIX_CONFIG.brandTagline;
+      }
+      function normalizeLogoUrl(value) {
+        if (typeof value !== "string") {
+          return "";
+        }
+        const url = value.trim();
+        if (!url || url.length > MAX_LOGO_CHARS) {
+          return "";
+        }
+        if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[a-z0-9+/=]+$/i.test(url)) {
+          return url;
+        }
+        if (/^https?:\/\/\S+$/i.test(url)) {
+          return url;
+        }
+        return "";
+      }
       function normalizeConfig(raw) {
         const r = raw && typeof raw === "object" ? raw : {};
         const parsed = parseInt(String(r.refreshSeconds ?? ""), 10);
@@ -474,7 +600,10 @@ System.register(['react', '@grafana/data'], (function (exports) {
           refreshSeconds,
           // Enabled unless the stored setting is explicitly false.
           sampleDataEnabled: r.sampleDataEnabled !== false && r.sampleDataEnabled !== "false",
-          defaultSource: r.defaultSource === "live" ? "live" : "sample"
+          defaultSource: r.defaultSource === "live" ? "live" : "sample",
+          brandName: normalizeBrandName(r.brandName),
+          brandTagline: normalizeBrandTagline(r.brandTagline),
+          logoUrl: normalizeLogoUrl(r.logoUrl)
         };
       }
       function toJsonData(config) {
@@ -493,7 +622,10 @@ System.register(['react', '@grafana/data'], (function (exports) {
           refreshSeconds: config.refreshSeconds,
           sampleDataEnabled: config.sampleDataEnabled,
           // Live-only mode cannot open on the sample dataset.
-          defaultSource: config.sampleDataEnabled ? config.defaultSource : "live"
+          defaultSource: config.sampleDataEnabled ? config.defaultSource : "live",
+          brandName: normalizeBrandName(config.brandName),
+          brandTagline: normalizeBrandTagline(config.brandTagline),
+          logoUrl: normalizeLogoUrl(config.logoUrl)
         };
       }
       let cache = null;
@@ -535,11 +667,12 @@ System.register(['react', '@grafana/data'], (function (exports) {
         }
       }
       async function saveZabbixConfig(config) {
+        const normalized = normalizeConfig(config);
         const res = await fetch(settingsUrl(), {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ enabled: true, pinned: true, jsonData: toJsonData(config) })
+          body: JSON.stringify({ enabled: true, pinned: true, jsonData: toJsonData(normalized) })
         });
         if (!res.ok) {
           let message = `Grafana returned HTTP ${res.status}`;
@@ -553,7 +686,8 @@ System.register(['react', '@grafana/data'], (function (exports) {
           throw new Error(message);
         }
         invalidateConfigCache();
-        cache = { config: { ...config }, at: Date.now() };
+        cache = { config: normalized, at: Date.now() };
+        return normalized;
       }
       function zabbixEndpoint(config, route) {
         if (config.transport === "direct") {
@@ -719,8 +853,38 @@ System.register(['react', '@grafana/data'], (function (exports) {
         };
       }
 
+      function isAggregateProcCpuKey(key) {
+        if (!/^proc\.cpu\.util\[/i.test(key)) {
+          return false;
+        }
+        const args = key.slice(key.indexOf("[") + 1, -1).split(",");
+        return (args[0] || "").trim() === "" && args.some((arg) => arg.trim().toLowerCase() === "total");
+      }
+      function isDiskUsageKey(key) {
+        return /^vfs\.fs\.(dependent\.)?size\[[^\]]*pused[^\]]*\]$/i.test(key) || /^as400\.disk\.size\[[^\]]*pused[^\]]*\]$/i.test(key);
+      }
+      function memoryConverter(resolved) {
+        if (resolved.memoryMode === "invert") {
+          return (value) => clamp(100 - value);
+        }
+        if (resolved.memoryMode === "derived" && resolved.memoryTotalValue && resolved.memoryTotalValue > 0) {
+          const total = resolved.memoryTotalValue;
+          return (value) => clamp(100 - value / total * 100);
+        }
+        return void 0;
+      }
       const MAX_POINTS = 24;
       const HISTORY_SECONDS = 24 * 60 * 60;
+      const ITEM_CACHE_TTL_MS = 5 * 60 * 1e3;
+      const HISTORY_RANGES = {
+        "6h": { label: "6H", full: "last 6 hours", seconds: 6 * 60 * 60, points: 72 },
+        "24h": { label: "24H", full: "last 24 hours", seconds: 24 * 60 * 60, points: 96 },
+        "7d": { label: "7D", full: "last 7 days", seconds: 7 * 24 * 60 * 60, points: 84 },
+        "30d": { label: "30D", full: "last 30 days", seconds: 30 * 24 * 60 * 60, points: 90 },
+        "90d": { label: "90D", full: "last 90 days", seconds: 90 * 24 * 60 * 60, points: 90 },
+        "6m": { label: "6M", full: "last 6 months", seconds: 180 * 24 * 60 * 60, points: 90 }
+      };
+      const HISTORY_RANGE_KEYS = ["6h", "24h", "7d", "30d", "90d", "6m"];
       function numeric$1(value) {
         const n = parseFloat(value || "");
         return Number.isFinite(n) ? n : null;
@@ -739,6 +903,29 @@ System.register(['react', '@grafana/data'], (function (exports) {
         }
         return Math.abs(h);
       }
+      function averageValues(series) {
+        const valid = series.filter((values) => values.length > 0);
+        if (!valid.length) {
+          return [];
+        }
+        const length = Math.min(...valid.map((values) => values.length));
+        return Array.from(
+          { length },
+          (_, i) => round(valid.reduce((sum, values) => sum + values[i], 0) / valid.length)
+        );
+      }
+      function averagePoints(series) {
+        const byTime = /* @__PURE__ */ new Map();
+        for (const points of series) {
+          for (const point of points) {
+            const bucket = byTime.get(point.t) || { sum: 0, count: 0 };
+            bucket.sum += point.v;
+            bucket.count += 1;
+            byTime.set(point.t, bucket);
+          }
+        }
+        return Array.from(byTime.entries()).sort((a, b) => a[0] - b[0]).map(([t, bucket]) => ({ t, v: round(bucket.sum / bucket.count) }));
+      }
       function downsample$1(values, buckets = MAX_POINTS) {
         if (values.length <= buckets) {
           return values;
@@ -753,6 +940,27 @@ System.register(['react', '@grafana/data'], (function (exports) {
         }
         return out;
       }
+      function toPoints(values, points, from, to) {
+        if (!values.length) {
+          return [];
+        }
+        const out = [];
+        const size = values.length / points;
+        for (let i = 0; i < points; i++) {
+          const start = Math.floor(i * size);
+          if (start >= values.length) {
+            break;
+          }
+          const end = Math.min(values.length, Math.max(start + 1, Math.floor((i + 1) * size)));
+          const slice = values.slice(start, end);
+          if (!slice.length) {
+            break;
+          }
+          const value = slice.reduce((a, b) => a + b, 0) / slice.length;
+          out.push({ t: Math.round(from + (i + 0.5) / points * (to - from)), v: round(value) });
+        }
+        return out;
+      }
       function sampleTrend(hostname, key, current) {
         const h = hash(`${hostname}:${key}`);
         const phase = h % 100 / 13;
@@ -764,8 +972,21 @@ System.register(['react', '@grafana/data'], (function (exports) {
         values[values.length - 1] = round(current);
         return values;
       }
+      function sampleTrendFor(hostname, key, current, points, range) {
+        const h = hash(`${hostname}:${key}:${range}`);
+        const phase = h % 100 / 13;
+        const amp = 4 + h % 11;
+        const values = Array.from({ length: points }, (_, i) => {
+          const x = i * 24 / Math.max(1, points - 1);
+          const wave = Math.sin(x / 2.7 + phase) * amp + Math.sin(x / 1.13 + phase * 1.7) * amp * 0.32 + Math.cos(x / 4.1 + phase) * amp * 0.18;
+          const drift = Math.sin(i / Math.max(1, points - 1) * Math.PI * 2 + phase) * amp * 0.55;
+          return round(clamp(current + wave + drift));
+        });
+        values[values.length - 1] = round(current);
+        return values;
+      }
       function sampleFilesystems(host) {
-        const mounts = host.os === "Windows" ? ["C:", "D:", "E:"] : ["/", "/data", "/var", "/opt"];
+        const mounts = host.os === "Windows" ? ["C:", "D:", "E:"] : host.os === "IBM i" || host.os === "AS400" ? ["/", "/QIBM/ProdData", "/QOpenSys", "/home"] : ["/", "/data", "/var", "/opt"];
         const factors = [1, 0.93, 0.82, 0.64];
         return mounts.map((mount, index) => {
           const jitter = hash(`${host.hostname}:${mount}`) % 9 - 4;
@@ -786,6 +1007,34 @@ System.register(['react', '@grafana/data'], (function (exports) {
           note: "SAMPLE dataset \u2014 charts are deterministic sample values, not Zabbix history."
         };
       }
+      function sampleHostHistory(host, range) {
+        const spec = HISTORY_RANGES[range];
+        const to = Math.floor(Date.now() / 1e3);
+        const from = to - spec.seconds;
+        const metrics = ["cpu", "memory", "disk", "network"];
+        const series = {};
+        for (const key of metrics) {
+          const values = sampleTrendFor(host.hostname, key, host[key], spec.points, range);
+          series[key] = toPoints(values, spec.points, from, to);
+        }
+        return {
+          range,
+          from,
+          to,
+          series,
+          filesystems: sampleFilesystems(host).map((fs) => ({
+            mount: fs.mount,
+            points: toPoints(
+              sampleTrendFor(host.hostname, `fs:${fs.mount}`, fs.used, spec.points, range),
+              spec.points,
+              from,
+              to
+            )
+          })),
+          source: "sample",
+          note: `SAMPLE dataset \u2014 deterministic ${spec.full}, not Zabbix history.`
+        };
+      }
       function fallbackHostDetail(host, message) {
         return {
           filesystems: [{ mount: host.os === "Windows" ? "C:" : "/", used: host.disk }],
@@ -796,81 +1045,250 @@ System.register(['react', '@grafana/data'], (function (exports) {
         };
       }
       function parseMount(key) {
-        const match = key.match(/\[(.*),pused\]/);
-        const mount = match ? match[1].replace(/^"|"$/g, "") : "";
+        const open = key.indexOf("[");
+        const args = open >= 0 ? key.slice(open + 1, -1).split(",") : [];
+        const mount = (args[0] || "").replace(/^"|"$/g, "");
         return mount || "/";
-      }
-      async function historyFor(rpc, item, convert) {
-        try {
-          const rows = await rpc("history.get", {
-            output: "extend",
-            history: parseInt(item.value_type || "0", 10) || 0,
-            itemids: [item.itemid],
-            time_from: Math.floor(Date.now() / 1e3) - HISTORY_SECONDS,
-            sortfield: "clock",
-            sortorder: "ASC",
-            limit: 2e3
-          });
-          const values = rows.map((row) => numeric$1(row.value)).filter((value) => value !== null).map((value) => convert ? convert(value) : value);
-          return downsample$1(values).map(round);
-        } catch {
-          return [];
-        }
       }
       function makeRpc(config) {
         return (method, params) => zabbixRpc(config, method, params);
       }
-      async function fetchHostDetail(host) {
-        const config = await loadZabbixConfig();
-        const rpc = makeRpc(config);
+      async function resolveHostItems(rpc, host) {
         const hosts = await rpc("host.get", {
           output: ["hostid"],
           filter: { host: [host.hostname] }
         });
         const hostid = hosts[0] && hosts[0].hostid;
         if (!hostid) {
-          return fallbackHostDetail(host, "This host is no longer present in Zabbix.");
+          return null;
         }
         const items = await rpc("item.get", {
-          output: ["itemid", "key_", "lastvalue", "value_type"],
+          output: ["itemid", "key_", "lastvalue", "value_type", "units"],
           hostids: [hostid],
           monitored: true,
           limit: 5e3
         });
         const byKey = new Map(items.map((item) => [item.key_, item]));
-        const cpuItem = byKey.get("system.cpu.util");
-        const memItem = byKey.get("vm.memory.util") || byKey.get("vm.memory.utilization");
-        const pavailable = !memItem ? byKey.get("vm.memory.size[pavailable]") : void 0;
+        let cpu = byKey.get("system.cpu.util");
+        let cpuPeers = [];
+        if (!cpu) {
+          cpu = items.find((item) => isAggregateProcCpuKey(item.key_));
+        }
+        if (!cpu) {
+          cpuPeers = items.filter((item) => /^hrProcessorLoad\[/i.test(item.key_));
+          cpu = cpuPeers.shift();
+        }
+        const memoryUtil = byKey.get("vm.memory.util") || byKey.get("vm.memory.utilization");
+        let memory = memoryUtil;
+        let memoryMode = memoryUtil ? "percent" : void 0;
+        let memoryTotal;
+        let memoryTotalValue;
+        if (!memory) {
+          const pavailable = byKey.get("vm.memory.size[pavailable]");
+          const pfree = byKey.get("vm.memory.size[pfree]");
+          if (pavailable) {
+            memory = pavailable;
+            memoryMode = "invert";
+          } else if (pfree) {
+            memory = pfree;
+            memoryMode = "invert";
+          }
+        }
+        if (!memory) {
+          memoryTotal = byKey.get("vm.memory.size[total]");
+          memoryTotalValue = numeric$1(memoryTotal?.lastvalue) ?? void 0;
+          const available = byKey.get("vm.memory.size[available]") || byKey.get("vm.memory.size[free]");
+          if (available && memoryTotal && memoryTotalValue && memoryTotalValue > 0) {
+            memory = available;
+            memoryMode = "derived";
+          } else {
+            memoryTotal = void 0;
+            memoryTotalValue = void 0;
+          }
+        }
         const filesystemByMount = /* @__PURE__ */ new Map();
         let diskItem;
         let diskUsed = -1;
+        const netIn = [];
+        const netOut = [];
+        const isBps = (item) => /bps/i.test(item.units || "");
         for (const item of items) {
-          if (!/^vfs\.fs\.(dependent\.)?size\[[^\]]*pused\]$/.test(item.key_)) {
-            continue;
-          }
-          const used = numeric$1(item.lastvalue);
-          if (used === null) {
-            continue;
-          }
-          const mount = parseMount(item.key_);
-          const previous = filesystemByMount.get(mount);
-          if (!previous || used > previous.used) {
-            filesystemByMount.set(mount, { mount, used: round(used) });
-          }
-          if (used > diskUsed) {
-            diskUsed = used;
-            diskItem = item;
+          if (isDiskUsageKey(item.key_)) {
+            const used = numeric$1(item.lastvalue);
+            if (used === null) {
+              continue;
+            }
+            const mount = /^as400\.disk\.size/i.test(item.key_) ? `Disk ${parseMount(item.key_)}` : parseMount(item.key_);
+            const previous = filesystemByMount.get(mount);
+            if (!previous || used > previous.used) {
+              filesystemByMount.set(mount, { mount, used: round(used), item });
+            }
+            if (used > diskUsed) {
+              diskUsed = used;
+              diskItem = item;
+            }
+          } else if ((/^net\.if\.in\[[^\]]*\]$/i.test(item.key_) || /^if(HC)?InOctets\[/i.test(item.key_) && isBps(item)) && !/errors|dropped|collisions/i.test(item.key_)) {
+            netIn.push(item);
+          } else if ((/^net\.if\.out\[[^\]]*\]$/i.test(item.key_) || /^if(HC)?OutOctets\[/i.test(item.key_) && isBps(item)) && !/errors|dropped|collisions/i.test(item.key_)) {
+            netOut.push(item);
           }
         }
-        const filesystems = Array.from(filesystemByMount.values()).sort((a, b) => b.used - a.used);
+        const byTraffic = (a, b) => (numeric$1(b.lastvalue) || 0) - (numeric$1(a.lastvalue) || 0);
+        return {
+          hostid,
+          cpu,
+          cpuPeers,
+          memory,
+          memoryMode,
+          memoryTotal,
+          memoryTotalValue,
+          disk: diskItem,
+          // The overview chart aggregates interfaces; two busiest directions keep the
+          // history request small while matching that percentage formula.
+          netIn: netIn.sort(byTraffic).slice(0, 2),
+          netOut: netOut.sort(byTraffic).slice(0, 2),
+          filesystems: Array.from(filesystemByMount.values()).sort((a, b) => b.used - a.used)
+        };
+      }
+      const itemCache = /* @__PURE__ */ new Map();
+      function resolveHostItemsCached(rpc, host) {
+        const now = Date.now();
+        const hit = itemCache.get(host.hostname);
+        if (hit && now - hit.at < ITEM_CACHE_TTL_MS) {
+          return hit.promise;
+        }
+        const promise = resolveHostItems(rpc, host);
+        itemCache.set(host.hostname, { at: now, promise });
+        promise.catch(() => {
+          if (itemCache.get(host.hostname)?.promise === promise) {
+            itemCache.delete(host.hostname);
+          }
+        });
+        return promise;
+      }
+      function bucketPoints(raw, points, from, to) {
+        if (!raw.length) {
+          return [];
+        }
+        const span = Math.max(1, to - from);
+        const buckets = Array.from({ length: points }, () => ({ sum: 0, count: 0 }));
+        for (const point of raw) {
+          const index = Math.min(
+            points - 1,
+            Math.max(0, Math.floor((point.t - from) / span * points))
+          );
+          buckets[index].sum += point.v;
+          buckets[index].count += 1;
+        }
+        const out = [];
+        buckets.forEach((bucket, index) => {
+          if (bucket.count) {
+            out.push({
+              t: Math.round(from + (index + 0.5) / points * span),
+              v: round(bucket.sum / bucket.count)
+            });
+          }
+        });
+        return out;
+      }
+      async function historyPointsFor(rpc, item, range, from, to, convert) {
+        const spec = HISTORY_RANGES[range];
+        let raw = [];
+        if (spec.seconds > HISTORY_SECONDS) {
+          try {
+            const rows = await rpc("trend.get", {
+              output: ["clock", "value_avg"],
+              itemids: [item.itemid],
+              time_from: from,
+              time_till: to,
+              sortfield: "clock",
+              sortorder: "ASC",
+              limit: 5e3
+            });
+            raw = rows.map((row) => ({ t: parseInt(row.clock, 10), v: numeric$1(row.value_avg ?? row.value) })).filter((point) => Number.isFinite(point.t) && point.v !== null).map((point) => ({ t: point.t, v: convert ? convert(point.v) : point.v }));
+          } catch {
+          }
+        }
+        if (!raw.length) {
+          try {
+            const rows = await rpc("history.get", {
+              output: "extend",
+              history: parseInt(item.value_type || "0", 10) || 0,
+              itemids: [item.itemid],
+              time_from: from,
+              time_till: to,
+              sortfield: "clock",
+              // Keep the newest samples when a high-frequency item exceeds the row cap.
+              sortorder: "DESC",
+              limit: 5e3
+            });
+            raw = rows.map((row) => ({ t: parseInt(row.clock, 10), v: numeric$1(row.value) })).filter((point) => Number.isFinite(point.t) && point.v !== null).map((point) => ({ t: point.t, v: convert ? convert(point.v) : point.v })).reverse();
+          } catch {
+            return [];
+          }
+        }
+        return bucketPoints(raw, spec.points, from, to);
+      }
+      async function networkPointsFor(rpc, resolved, range, from, to) {
+        const directions = [...resolved.netIn, ...resolved.netOut];
+        if (!directions.length) {
+          return [];
+        }
+        const series = (await Promise.all(directions.map((item) => historyPointsFor(rpc, item, range, from, to)))).filter((points) => points.length > 0);
+        if (!series.length) {
+          return [];
+        }
+        const byTime = /* @__PURE__ */ new Map();
+        for (const points of series) {
+          for (const point of points) {
+            byTime.set(point.t, (byTime.get(point.t) || 0) + point.v);
+          }
+        }
+        return Array.from(byTime.entries()).sort((a, b) => a[0] - b[0]).map(([t, sum]) => ({ t, v: round(clamp(sum / 1e9 * 100)) }));
+      }
+      async function cpuPointsFor(rpc, resolved, range, from, to) {
+        const items = [resolved.cpu, ...resolved.cpuPeers].filter(
+          (item) => !!item
+        );
+        if (!items.length) {
+          return [];
+        }
+        if (items.length === 1) {
+          return historyPointsFor(rpc, items[0], range, from, to);
+        }
+        return averagePoints(
+          await Promise.all(items.map((item) => historyPointsFor(rpc, item, range, from, to)))
+        );
+      }
+      async function fetchHostDetail(host) {
+        const config = await loadZabbixConfig();
+        const rpc = makeRpc(config);
+        let resolved = null;
+        try {
+          resolved = await resolveHostItemsCached(rpc, host);
+        } catch (err) {
+          return fallbackHostDetail(host, `Live detail unavailable: ${err.message}`);
+        }
+        if (!resolved) {
+          return fallbackHostDetail(host, "This host is no longer present in Zabbix.");
+        }
+        const filesystems = resolved.filesystems.map(({ mount, used }) => ({
+          mount,
+          used
+        }));
         if (!filesystems.length) {
           filesystems.push({ mount: host.os === "Windows" ? "C:" : "/", used: host.disk });
         }
-        const [cpu, memory, disk] = await Promise.all([
-          cpuItem ? historyFor(rpc, cpuItem) : Promise.resolve([]),
-          memItem ? historyFor(rpc, memItem) : pavailable ? historyFor(rpc, pavailable, (value) => 100 - value) : Promise.resolve([]),
-          diskItem ? historyFor(rpc, diskItem) : Promise.resolve([])
+        const legacyHistory = (item, convert) => item ? historyValues(rpc, item, convert) : Promise.resolve([]);
+        const cpuItems = [resolved.cpu, ...resolved.cpuPeers].filter(
+          (item) => !!item
+        );
+        const [cpuSeries, memory, disk] = await Promise.all([
+          Promise.all(cpuItems.map((item) => legacyHistory(item))),
+          legacyHistory(resolved.memory, memoryConverter(resolved)),
+          legacyHistory(resolved.disk)
         ]);
+        const cpu = averageValues(cpuSeries);
         const partial = !cpu.length || !memory.length || !disk.length;
         return {
           filesystems: filesystems.slice(0, 8),
@@ -884,16 +1302,96 @@ System.register(['react', '@grafana/data'], (function (exports) {
           note: partial ? "Live snapshot; 24 h history is unavailable for one or more items on this host." : "Fetched from Zabbix when this panel opened; sparklines cover the last 24 hours."
         };
       }
+      async function historyValues(rpc, item, convert) {
+        try {
+          const rows = await rpc("history.get", {
+            output: "extend",
+            history: parseInt(item.value_type || "0", 10) || 0,
+            itemids: [item.itemid],
+            time_from: Math.floor(Date.now() / 1e3) - HISTORY_SECONDS,
+            sortfield: "clock",
+            sortorder: "DESC",
+            limit: 2e3
+          });
+          const values = rows.map((row) => numeric$1(row.value)).filter((value) => value !== null).map((value) => convert ? convert(value) : value).reverse();
+          return downsample$1(values).map(round);
+        } catch {
+          return [];
+        }
+      }
+      async function fetchHostHistory(host, range) {
+        const config = await loadZabbixConfig();
+        const rpc = makeRpc(config);
+        const spec = HISTORY_RANGES[range];
+        const to = Math.floor(Date.now() / 1e3);
+        const from = to - spec.seconds;
+        const empty = {
+          range,
+          from,
+          to,
+          series: {},
+          filesystems: [],
+          source: "live",
+          partial: true,
+          note: "Live history is unavailable for this host."
+        };
+        let resolved = null;
+        try {
+          resolved = await resolveHostItemsCached(rpc, host);
+        } catch (err) {
+          return { ...empty, note: `Live history unavailable: ${err.message}` };
+        }
+        if (!resolved) {
+          return { ...empty, note: "This host is no longer present in Zabbix." };
+        }
+        const [cpu, memory, disk, network, filesystems] = await Promise.all([
+          cpuPointsFor(rpc, resolved, range, from, to),
+          resolved.memory ? historyPointsFor(rpc, resolved.memory, range, from, to, memoryConverter(resolved)) : Promise.resolve([]),
+          resolved.disk ? historyPointsFor(rpc, resolved.disk, range, from, to) : Promise.resolve([]),
+          networkPointsFor(rpc, resolved, range, from, to),
+          Promise.all(
+            resolved.filesystems.slice(0, 8).map(async (fs) => ({
+              mount: fs.mount,
+              points: await historyPointsFor(rpc, fs.item, range, from, to)
+            }))
+          )
+        ]);
+        const series = {};
+        if (cpu.length) {
+          series.cpu = cpu;
+        }
+        if (memory.length) {
+          series.memory = memory;
+        }
+        if (disk.length) {
+          series.disk = disk;
+        }
+        if (network.length) {
+          series.network = network;
+        }
+        const filesystemSeries = filesystems.filter((fs) => fs.points.length > 0);
+        const partial = !cpu.length || !memory.length || !disk.length || !network.length;
+        return {
+          range,
+          from,
+          to,
+          series,
+          filesystems: filesystemSeries,
+          source: "live",
+          partial,
+          note: partial ? `Live history is incomplete for ${spec.full}.` : `Fetched from Zabbix: ${spec.full}.`
+        };
+      }
 
       const HEALTH_COLOR = {
         healthy: "#00d47e",
         warning: "#ffc107",
-        critical: "#ff4d67",
-        stale: "#8ea3bf",
-        maintenance: "#5fb0ff",
-        unavailable: "#ff8a3d"
+        critical: "#ff3b30",
+        stale: "#8f9298",
+        maintenance: "#22d3ee",
+        unavailable: "#a855f7"
       };
-      const BAND_COLOR = (value) => value >= 90 ? "#ff4d67" : value >= 70 ? "#ffc107" : "#00d47e";
+      const BAND_COLOR = (value) => value >= 90 ? "#ff3b30" : value >= 70 ? "#ffc107" : "#00d47e";
       const BAND_LABEL = (value) => value >= 90 ? "Critical" : value >= 70 ? "Warning" : "Normal";
       const METRICS = [
         { key: "cpu", label: "CPU Utilisation", accent: "#2f9bff" },
@@ -901,6 +1399,47 @@ System.register(['react', '@grafana/data'], (function (exports) {
         { key: "disk", label: "Disk Utilisation", accent: "#00d47e" },
         { key: "network", label: "Network Utilisation", accent: "#00d4ff" }
       ];
+      const HISTORY_TABS = [
+        { key: "cpu", label: "CPU", color: "#2f9bff" },
+        { key: "memory", label: "Memory", color: "#8b5cf6" },
+        { key: "disk", label: "Disk", color: "#00d47e" },
+        { key: "network", label: "Network", color: "#00d4ff" },
+        { key: "filesystems", label: "Filesystems", color: "#8f9298" }
+      ];
+      const HISTORY_COLORS = [
+        "#3987e5",
+        "#d95926",
+        "#199e70",
+        "#c98500",
+        "#d55181",
+        "#008300",
+        "#9085e9",
+        "#e66767"
+      ];
+      function formatAxisTime(t, range) {
+        const date = new Date(t * 1e3);
+        if (range === "6h" || range === "24h") {
+          return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+        }
+        if (range === "7d") {
+          return date.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit" });
+        }
+        return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      }
+      function formatTooltipTime(t) {
+        return new Date(t * 1e3).toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+      function nearestPoint(points, t) {
+        return points.reduce(
+          (best, point) => Math.abs(point.t - t) < Math.abs(best.t - t) ? point : best,
+          points[0]
+        );
+      }
       function Gauge({ value, color }) {
         const v = Math.max(0, Math.min(100, value));
         return /* @__PURE__ */ React.createElement("div", { className: "cc-gauge" }, /* @__PURE__ */ React.createElement("svg", { viewBox: "0 0 120 70", role: "img", "aria-label": `${v.toFixed(0)} percent` }, /* @__PURE__ */ React.createElement(
@@ -915,6 +1454,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
         ), /* @__PURE__ */ React.createElement(
           "path",
           {
+            className: "cc-gauge-fill",
             d: "M 12 60 A 48 48 0 0 1 108 60",
             fill: "none",
             stroke: color,
@@ -948,9 +1488,9 @@ System.register(['react', '@grafana/data'], (function (exports) {
         if (!values || values.length < 2) {
           return /* @__PURE__ */ React.createElement("div", { className: "cc-detail-spark-empty" }, "no history");
         }
-        const w = 160;
+        const w = 240;
         const h = 40;
-        const pad = 3;
+        const pad = 4;
         const n = values.length;
         const point = (value, index) => [
           pad + index * (w - pad * 2) / (n - 1),
@@ -959,7 +1499,11 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const points = values.map(point);
         const line = points.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
         const area = `M ${points[0][0]},${h - pad} L ${line.replace(/ /g, " L ")} L ${points[n - 1][0]},${h - pad} Z`;
-        const last = points[n - 1];
+        const maxIndex = values.indexOf(Math.max(...values));
+        const minIndex = values.indexOf(Math.min(...values));
+        const maxPoint = points[maxIndex];
+        const minPoint = points[minIndex];
+        const timeLabel = (index) => index === n - 1 ? "now" : `${n - 1 - index}h ago`;
         return /* @__PURE__ */ React.createElement("svg", { className: "cc-detail-spark", viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none", "aria-hidden": "true" }, /* @__PURE__ */ React.createElement(
           "line",
           {
@@ -967,12 +1511,283 @@ System.register(['react', '@grafana/data'], (function (exports) {
             y1: h - pad - 0.9 * (h - pad * 2),
             x2: w - pad,
             y2: h - pad - 0.9 * (h - pad * 2),
-            stroke: "#ff4d67",
+            stroke: "#ff3b30",
             strokeWidth: "1",
             strokeDasharray: "2 3",
             opacity: "0.35"
           }
-        ), /* @__PURE__ */ React.createElement("path", { d: area, fill: color, opacity: "0.12" }), /* @__PURE__ */ React.createElement("polyline", { points: line, fill: "none", stroke: color, strokeWidth: "1.5", strokeLinejoin: "round" }), /* @__PURE__ */ React.createElement("circle", { cx: last[0], cy: last[1], r: "2.2", fill: color }));
+        ), /* @__PURE__ */ React.createElement("path", { d: area, fill: color, opacity: "0.12" }), /* @__PURE__ */ React.createElement(
+          "polyline",
+          {
+            className: "cc-spark-line",
+            points: line,
+            fill: "none",
+            stroke: color,
+            strokeWidth: "1.5",
+            strokeLinejoin: "round"
+          }
+        ), points.map(([x, y], index) => /* @__PURE__ */ React.createElement("circle", { key: index, cx: x, cy: y, r: "1.5", fill: color, opacity: "0.95" }, /* @__PURE__ */ React.createElement("title", null, `${values[index].toFixed(1)}% \xB7 ${timeLabel(index)}`))), /* @__PURE__ */ React.createElement(
+          "circle",
+          {
+            cx: maxPoint[0],
+            cy: maxPoint[1],
+            r: "3",
+            fill: "#ff3b30",
+            stroke: "#0a1424",
+            strokeWidth: "1.2"
+          },
+          /* @__PURE__ */ React.createElement("title", null, `Peak ${values[maxIndex].toFixed(1)}% \xB7 ${timeLabel(maxIndex)}`)
+        ), /* @__PURE__ */ React.createElement(
+          "circle",
+          {
+            cx: minPoint[0],
+            cy: minPoint[1],
+            r: "3",
+            fill: "#00d47e",
+            stroke: "#0a1424",
+            strokeWidth: "1.2"
+          },
+          /* @__PURE__ */ React.createElement("title", null, `Low ${values[minIndex].toFixed(1)}% \xB7 ${timeLabel(minIndex)}`)
+        ));
+      }
+      function HistoryChart({
+        series,
+        from,
+        to,
+        range
+      }) {
+        const [hover, setHover] = useState(null);
+        const width = 720;
+        const height = 300;
+        const margin = { top: 18, right: 18, bottom: 34, left: 46 };
+        const plotW = width - margin.left - margin.right;
+        const plotH = height - margin.top - margin.bottom;
+        const span = Math.max(1, to - from);
+        const xFor = (t) => margin.left + (t - from) / span * plotW;
+        const yFor = (v) => margin.top + (1 - Math.max(0, Math.min(100, v)) / 100) * plotH;
+        const grid = [0, 25, 50, 75, 100];
+        const xTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => from + f * span);
+        const basePoints = series[0] ? series[0].points : [];
+        const count = basePoints.length;
+        const hoverIndex = hover !== null && count ? Math.min(hover, count - 1) : null;
+        const hoveredT = hoverIndex !== null ? basePoints[hoverIndex].t : null;
+        if (!series.length || !count) {
+          return /* @__PURE__ */ React.createElement("div", { className: "cc-history-empty" }, "No samples in this window.");
+        }
+        const single = series.length === 1 ? series[0] : null;
+        const peakIndex = single ? single.points.reduce((best, p, i, arr) => p.v > arr[best].v ? i : best, 0) : -1;
+        const lowIndex = single ? single.points.reduce((best, p, i, arr) => p.v < arr[best].v ? i : best, 0) : -1;
+        const areaPath = single ? `M ${xFor(single.points[0].t)},${yFor(0)} L ${single.points.map((p) => `${xFor(p.t).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(" L ")} L ${xFor(single.points[single.points.length - 1].t)},${yFor(0)} Z` : "";
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-history-plot" }, /* @__PURE__ */ React.createElement(
+          "svg",
+          {
+            viewBox: `0 0 ${width} ${height}`,
+            role: "img",
+            "aria-label": `History chart for ${series.map((s) => s.label).join(", ")} across ${range}`
+          },
+          grid.map((value) => /* @__PURE__ */ React.createElement("g", { key: value }, /* @__PURE__ */ React.createElement(
+            "line",
+            {
+              x1: margin.left,
+              y1: yFor(value),
+              x2: width - margin.right,
+              y2: yFor(value),
+              stroke: "rgba(255,255,255,0.07)",
+              strokeWidth: "1"
+            }
+          ), /* @__PURE__ */ React.createElement(
+            "text",
+            {
+              x: margin.left - 8,
+              y: yFor(value) + 3,
+              textAnchor: "end",
+              className: "cc-history-axis-label"
+            },
+            value,
+            "%"
+          ))),
+          single ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+            "line",
+            {
+              x1: margin.left,
+              y1: yFor(90),
+              x2: width - margin.right,
+              y2: yFor(90),
+              stroke: "#ff3b30",
+              strokeWidth: "1",
+              strokeDasharray: "4 4",
+              opacity: "0.35"
+            }
+          ), /* @__PURE__ */ React.createElement(
+            "line",
+            {
+              x1: margin.left,
+              y1: yFor(70),
+              x2: width - margin.right,
+              y2: yFor(70),
+              stroke: "#ffc107",
+              strokeWidth: "1",
+              strokeDasharray: "4 4",
+              opacity: "0.28"
+            }
+          )) : null,
+          /* @__PURE__ */ React.createElement(
+            "line",
+            {
+              x1: margin.left,
+              y1: height - margin.bottom,
+              x2: width - margin.right,
+              y2: height - margin.bottom,
+              stroke: "rgba(255,255,255,0.16)",
+              strokeWidth: "1"
+            }
+          ),
+          xTicks.map((t, index) => /* @__PURE__ */ React.createElement(
+            "text",
+            {
+              key: index,
+              x: xFor(t),
+              y: height - 12,
+              textAnchor: index === 0 ? "start" : index === xTicks.length - 1 ? "end" : "middle",
+              className: "cc-history-axis-label"
+            },
+            formatAxisTime(t, range)
+          )),
+          single ? /* @__PURE__ */ React.createElement("path", { className: "cc-history-area", d: areaPath, fill: single.color }) : null,
+          series.map((s, index) => /* @__PURE__ */ React.createElement(
+            "polyline",
+            {
+              key: s.key,
+              className: "cc-history-line",
+              pathLength: 1,
+              points: s.points.map((p) => `${xFor(p.t).toFixed(1)},${yFor(p.v).toFixed(1)}`).join(" "),
+              fill: "none",
+              stroke: s.color,
+              strokeWidth: "2",
+              strokeLinejoin: "round",
+              strokeLinecap: "round",
+              style: { animationDelay: `${index * 0.07}s` }
+            }
+          )),
+          single ? /* @__PURE__ */ React.createElement("g", { className: "cc-history-dots" }, single.points.map((point, index) => /* @__PURE__ */ React.createElement(
+            "circle",
+            {
+              key: index,
+              cx: xFor(point.t),
+              cy: yFor(point.v),
+              r: "1.7",
+              fill: single.color,
+              opacity: "0.85"
+            }
+          ))) : null,
+          single && single.points.length ? /* @__PURE__ */ React.createElement("g", { className: "cc-history-latest" }, /* @__PURE__ */ React.createElement(
+            "circle",
+            {
+              cx: xFor(single.points[single.points.length - 1].t),
+              cy: yFor(single.points[single.points.length - 1].v),
+              r: "7",
+              fill: "none",
+              stroke: single.color,
+              strokeWidth: "1.3"
+            }
+          ), /* @__PURE__ */ React.createElement(
+            "circle",
+            {
+              cx: xFor(single.points[single.points.length - 1].t),
+              cy: yFor(single.points[single.points.length - 1].v),
+              r: "3",
+              fill: single.color,
+              stroke: "#0a1424",
+              strokeWidth: "1.2"
+            }
+          )) : null,
+          single ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+            "circle",
+            {
+              cx: xFor(single.points[peakIndex].t),
+              cy: yFor(single.points[peakIndex].v),
+              r: "3.5",
+              fill: "#ff3b30",
+              stroke: "#0a1424",
+              strokeWidth: "1.4"
+            },
+            /* @__PURE__ */ React.createElement("title", null, `Peak ${single.points[peakIndex].v.toFixed(1)}% \xB7 ${formatTooltipTime(
+        single.points[peakIndex].t
+      )}`)
+          ), /* @__PURE__ */ React.createElement(
+            "circle",
+            {
+              cx: xFor(single.points[lowIndex].t),
+              cy: yFor(single.points[lowIndex].v),
+              r: "3.5",
+              fill: "#00d47e",
+              stroke: "#0a1424",
+              strokeWidth: "1.4"
+            },
+            /* @__PURE__ */ React.createElement("title", null, `Low ${single.points[lowIndex].v.toFixed(1)}% \xB7 ${formatTooltipTime(
+        single.points[lowIndex].t
+      )}`)
+          )) : null,
+          hoveredT !== null && hoverIndex !== null ? /* @__PURE__ */ React.createElement("g", null, /* @__PURE__ */ React.createElement(
+            "line",
+            {
+              x1: xFor(hoveredT),
+              y1: margin.top,
+              x2: xFor(hoveredT),
+              y2: height - margin.bottom,
+              stroke: "rgba(219,231,245,0.5)",
+              strokeWidth: "1",
+              strokeDasharray: "3 3"
+            }
+          ), series.map((s) => {
+            const point = nearestPoint(s.points, hoveredT);
+            return /* @__PURE__ */ React.createElement(
+              "circle",
+              {
+                key: s.key,
+                cx: xFor(point.t),
+                cy: yFor(point.v),
+                r: "3",
+                fill: s.color,
+                stroke: "#0a1424",
+                strokeWidth: "1.2"
+              }
+            );
+          })) : null,
+          /* @__PURE__ */ React.createElement(
+            "rect",
+            {
+              x: margin.left,
+              y: margin.top,
+              width: plotW,
+              height: plotH,
+              fill: "transparent",
+              pointerEvents: "all",
+              onMouseMove: (event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                if (!rect.width) {
+                  return;
+                }
+                const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+                setHover(Math.round(fraction * (count - 1)));
+              },
+              onMouseLeave: () => setHover(null)
+            }
+          )
+        ), hoveredT !== null && hoverIndex !== null ? /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: "cc-history-tip",
+            style: {
+              left: `${Math.min(92, Math.max(8, xFor(hoveredT) / width * 100))}%`
+            }
+          },
+          /* @__PURE__ */ React.createElement("div", { className: "cc-history-tip-time" }, formatTooltipTime(hoveredT)),
+          series.map((s) => {
+            const point = nearestPoint(s.points, hoveredT);
+            return /* @__PURE__ */ React.createElement("div", { className: "cc-history-tip-row", key: s.key }, /* @__PURE__ */ React.createElement("i", { style: { background: s.color } }), /* @__PURE__ */ React.createElement("span", null, s.label), /* @__PURE__ */ React.createElement("b", null, point.v.toFixed(1), "%"));
+          })
+        ) : null);
       }
       function UsageTrack({ value, color, marker }) {
         return /* @__PURE__ */ React.createElement("div", { className: "cc-usage-track" }, /* @__PURE__ */ React.createElement("span", { style: { width: `${Math.max(0, Math.min(100, value))}%`, background: color } }), marker !== void 0 ? /* @__PURE__ */ React.createElement("i", { style: { left: `${Math.max(0, Math.min(100, marker))}%` }, title: `Fleet average ${marker.toFixed(1)}%` }) : null);
@@ -999,6 +1814,13 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const [state, setState] = useState(
           source === "sample" ? "ready" : "loading"
         );
+        const [historyTab, setHistoryTab] = useState(null);
+        const [historyRange, setHistoryRange] = useState("24h");
+        const [history, setHistory] = useState(null);
+        const [historyState, setHistoryState] = useState(
+          "idle"
+        );
+        const historyCache = useRef(/* @__PURE__ */ new Map());
         useEffect(() => {
           if (source === "sample") {
             setDetail(sampleHostDetail(host));
@@ -1024,14 +1846,78 @@ System.register(['react', '@grafana/data'], (function (exports) {
           };
         }, [host.id, host.hostname, host.cpu, host.memory, host.disk, host.network, source]);
         useEffect(() => {
+          historyCache.current.clear();
+          setHistoryTab(null);
+          setHistory(null);
+          setHistoryState("idle");
+        }, [host.id, host.hostname]);
+        useEffect(() => {
+          if (!historyTab) {
+            return;
+          }
+          if (source === "sample") {
+            setHistory(sampleHostHistory(host, historyRange));
+            setHistoryState("ready");
+            return;
+          }
+          const cached = historyCache.current.get(historyRange);
+          if (cached) {
+            setHistory(cached);
+            setHistoryState("ready");
+            return;
+          }
+          let cancelled = false;
+          const now = Math.floor(Date.now() / 1e3);
+          setHistory(null);
+          setHistoryState("loading");
+          fetchHostHistory(host, historyRange).then((result) => {
+            if (!cancelled) {
+              historyCache.current.set(historyRange, result);
+              setHistory(result);
+              setHistoryState("ready");
+            }
+          }).catch((err) => {
+            if (!cancelled) {
+              setHistoryState("error");
+              setHistory({
+                range: historyRange,
+                from: now - HISTORY_RANGES[historyRange].seconds,
+                to: now,
+                series: {},
+                filesystems: [],
+                source: "live",
+                partial: true,
+                note: `Live history unavailable: ${err.message}`
+              });
+            }
+          });
+          return () => {
+            cancelled = true;
+          };
+        }, [
+          historyTab,
+          historyRange,
+          source,
+          host.id,
+          host.hostname,
+          host.cpu,
+          host.memory,
+          host.disk,
+          host.network
+        ]);
+        useEffect(() => {
           const onKey = (event) => {
             if (event.key === "Escape") {
-              onClose();
+              if (historyTab) {
+                setHistoryTab(null);
+              } else {
+                onClose();
+              }
             }
           };
           window.addEventListener("keydown", onKey);
           return () => window.removeEventListener("keydown", onKey);
-        }, [onClose]);
+        }, [onClose, historyTab]);
         useEffect(() => {
           const previous = document.body.style.overflow;
           document.body.style.overflow = "hidden";
@@ -1042,6 +1928,35 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const hostProblems = problems.filter((p) => p.hostname === host.hostname).slice().sort((a, b) => a.minutesAgo - b.minutesAgo);
         const filesystems = detail ? detail.filesystems : [];
         const healthColor = HEALTH_COLOR[host.health];
+        const historyMeta = METRICS.find((metric) => metric.key === historyTab);
+        const historyLabel = historyTab === "filesystems" ? "All filesystems" : historyMeta ? historyMeta.label : "";
+        const chartSeries = [];
+        if (history) {
+          if (historyTab === "filesystems") {
+            history.filesystems.forEach((fs, index) => {
+              chartSeries.push({
+                key: fs.mount,
+                label: fs.mount,
+                color: HISTORY_COLORS[index % HISTORY_COLORS.length],
+                points: fs.points
+              });
+            });
+          } else if (historyTab) {
+            const points = history.series[historyTab];
+            if (points && points.length && historyMeta) {
+              chartSeries.push({
+                key: historyTab,
+                label: historyMeta.label.replace(" Utilisation", ""),
+                color: historyMeta.accent,
+                points
+              });
+            }
+          }
+        }
+        const singleValues = chartSeries.length === 1 ? chartSeries[0].points.map((p) => p.v) : [];
+        const singlePeak = singleValues.length ? Math.max(...singleValues) : 0;
+        const singleLow = singleValues.length ? Math.min(...singleValues) : 0;
+        const singleAvg = singleValues.length ? singleValues.reduce((sum, value) => sum + value, 0) / singleValues.length : 0;
         return /* @__PURE__ */ React.createElement(
           "div",
           {
@@ -1060,18 +1975,95 @@ System.register(['react', '@grafana/data'], (function (exports) {
               "aria-modal": "true",
               "aria-labelledby": "cc-host-detail-title"
             },
+            /* @__PURE__ */ React.createElement("div", { className: "cc-modal-aurora a1", "aria-hidden": "true" }),
+            /* @__PURE__ */ React.createElement("div", { className: "cc-modal-aurora a2", "aria-hidden": "true" }),
+            /* @__PURE__ */ React.createElement("div", { className: "cc-modal-beam", "aria-hidden": "true" }),
             /* @__PURE__ */ React.createElement("div", { className: "cc-modal-head" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-modal-kicker" }, "SERVER STATISTICS", /* @__PURE__ */ React.createElement("span", { className: `cc-modal-source ${source}` }, source.toUpperCase())), /* @__PURE__ */ React.createElement("div", { className: "cc-modal-title", id: "cc-host-detail-title" }, host.hostname), /* @__PURE__ */ React.createElement("div", { className: "cc-modal-sub" }, host.environment, " \xB7 ", host.tier, " \xB7 ", host.hostGroup, " \xB7 ", host.os, " \xB7 ", host.businessService)), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-modal-close", onClick: onClose, "aria-label": "Close server statistics" }, "\xD7")),
-            /* @__PURE__ */ React.createElement("div", { className: "cc-modal-body" }, /* @__PURE__ */ React.createElement("div", { className: "cc-metric-grid" }, METRICS.map((metric) => {
+            /* @__PURE__ */ React.createElement("div", { className: "cc-modal-body" }, historyTab ? /* @__PURE__ */ React.createElement("div", { className: "cc-history" }, /* @__PURE__ */ React.createElement("div", { className: "cc-history-head" }, /* @__PURE__ */ React.createElement(
+              "button",
+              {
+                type: "button",
+                className: "cc-history-back",
+                onClick: () => setHistoryTab(null)
+              },
+              "\u2190 Overview"
+            ), /* @__PURE__ */ React.createElement("div", { className: "cc-history-heading" }, /* @__PURE__ */ React.createElement("div", { className: "cc-history-title" }, historyLabel, " history"), /* @__PURE__ */ React.createElement("div", { className: "cc-history-sub" }, HISTORY_RANGES[historyRange].full, historyState === "loading" ? " \xB7 loading from Zabbix\u2026" : history && history.source === "sample" ? " \xB7 sample dataset" : " \xB7 point-to-point samples")), /* @__PURE__ */ React.createElement("div", { className: "cc-history-ranges", role: "group", "aria-label": "History time range" }, HISTORY_RANGE_KEYS.map((key) => /* @__PURE__ */ React.createElement(
+              "button",
+              {
+                type: "button",
+                key,
+                className: `cc-history-range${key === historyRange ? " active" : ""}`,
+                "aria-pressed": key === historyRange,
+                onClick: () => setHistoryRange(key)
+              },
+              HISTORY_RANGES[key].label
+            )))), /* @__PURE__ */ React.createElement("div", { className: "cc-history-tabs", role: "tablist", "aria-label": "History metric" }, HISTORY_TABS.map((tab) => /* @__PURE__ */ React.createElement(
+              "button",
+              {
+                type: "button",
+                role: "tab",
+                key: tab.key,
+                "aria-selected": historyTab === tab.key,
+                className: `cc-history-tab${historyTab === tab.key ? " active" : ""}`,
+                onClick: () => setHistoryTab(tab.key)
+              },
+              /* @__PURE__ */ React.createElement("i", { style: { background: tab.color } }),
+              tab.label
+            ))), /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-history-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-history-panel-head" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-history-panel-title" }, historyTab === "filesystems" ? "Filesystem utilisation" : `${historyLabel.replace(" Utilisation", "")} utilisation`), /* @__PURE__ */ React.createElement("div", { className: "cc-history-panel-sub" }, HISTORY_RANGES[historyRange].full, " \xB7 0\u2013100% scale")), singleValues.length ? /* @__PURE__ */ React.createElement("div", { className: "cc-history-stats" }, /* @__PURE__ */ React.createElement("span", { className: "peak" }, "peak ", /* @__PURE__ */ React.createElement("b", null, singlePeak.toFixed(1), "%")), /* @__PURE__ */ React.createElement("span", { className: "low" }, "low ", /* @__PURE__ */ React.createElement("b", null, singleLow.toFixed(1), "%")), /* @__PURE__ */ React.createElement("span", null, "avg ", /* @__PURE__ */ React.createElement("b", null, singleAvg.toFixed(1), "%"))) : chartSeries.length ? /* @__PURE__ */ React.createElement("div", { className: "cc-history-stats" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("b", null, chartSeries.length), " series")) : null), historyState === "loading" && !history ? /* @__PURE__ */ React.createElement("div", { className: "cc-history-loading" }, "Loading ", HISTORY_RANGES[historyRange].full, " from Zabbix\u2026") : /* @__PURE__ */ React.createElement(
+              HistoryChart,
+              {
+                key: `${historyTab}-${historyRange}`,
+                series: chartSeries,
+                from: history ? history.from : 0,
+                to: history ? history.to : 0,
+                range: historyRange
+              }
+            ), chartSeries.length > 1 ? /* @__PURE__ */ React.createElement("div", { className: "cc-history-legend" }, chartSeries.map((s) => {
+              const latest = s.points[s.points.length - 1];
+              return /* @__PURE__ */ React.createElement("span", { key: s.key }, /* @__PURE__ */ React.createElement("i", { style: { background: s.color } }), s.label, latest ? /* @__PURE__ */ React.createElement("b", { style: { color: BAND_COLOR(latest.v) } }, latest.v.toFixed(0), "%") : null);
+            })) : null, history ? /* @__PURE__ */ React.createElement("div", { className: "cc-history-note" }, history.note) : null)) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cc-metric-grid" }, METRICS.map((metric) => {
               const value = host[metric.key];
               const trend = detail ? detail.trends[metric.key] : void 0;
-              return /* @__PURE__ */ React.createElement("div", { className: "cc-metric-card", key: metric.key }, /* @__PURE__ */ React.createElement(Gauge, { value, color: BAND_COLOR(value) }), /* @__PURE__ */ React.createElement("div", { className: "cc-metric-info" }, /* @__PURE__ */ React.createElement("div", { className: "cc-metric-name" }, metric.label), /* @__PURE__ */ React.createElement("div", { className: "cc-metric-band", style: { color: BAND_COLOR(value) } }, BAND_LABEL(value)), /* @__PURE__ */ React.createElement("div", { className: "cc-metric-fleet" }, "Fleet avg ", fleet[metric.key].toFixed(1), "%")), /* @__PURE__ */ React.createElement(Sparkline, { values: trend, color: metric.accent }), /* @__PURE__ */ React.createElement("div", { className: "cc-metric-foot" }, trend && trend.length > 1 ? "last 24 h" : "current snapshot"));
+              const hasTrend = !!trend && trend.length > 1;
+              const peak = hasTrend ? Math.max(...trend) : 0;
+              const low = hasTrend ? Math.min(...trend) : 0;
+              return /* @__PURE__ */ React.createElement(
+                "div",
+                {
+                  className: "cc-metric-card cc-metric-click",
+                  key: metric.key,
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-label": `Open ${metric.label} history`,
+                  onClick: () => setHistoryTab(metric.key),
+                  onKeyDown: (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setHistoryTab(metric.key);
+                    }
+                  }
+                },
+                /* @__PURE__ */ React.createElement("span", { className: "cc-metric-open", "aria-hidden": "true" }, "history \u2197"),
+                /* @__PURE__ */ React.createElement(Gauge, { value, color: BAND_COLOR(value) }),
+                /* @__PURE__ */ React.createElement("div", { className: "cc-metric-info" }, /* @__PURE__ */ React.createElement("div", { className: "cc-metric-name" }, metric.label), /* @__PURE__ */ React.createElement("div", { className: "cc-metric-band", style: { color: BAND_COLOR(value) } }, BAND_LABEL(value)), /* @__PURE__ */ React.createElement("div", { className: "cc-metric-fleet" }, "Fleet avg ", fleet[metric.key].toFixed(1), "%")),
+                /* @__PURE__ */ React.createElement(Sparkline, { values: trend, color: metric.accent }),
+                /* @__PURE__ */ React.createElement("div", { className: "cc-metric-foot" }, hasTrend ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "cc-metric-range" }, /* @__PURE__ */ React.createElement("b", { className: "peak" }, "peak ", peak.toFixed(0), "%"), /* @__PURE__ */ React.createElement("em", null, "\xB7"), /* @__PURE__ */ React.createElement("b", { className: "low" }, "low ", low.toFixed(0), "%")), /* @__PURE__ */ React.createElement("span", null, "last 24 h")) : /* @__PURE__ */ React.createElement("span", null, "current snapshot"))
+              );
             })), /* @__PURE__ */ React.createElement("div", { className: "cc-detail-grid" }, /* @__PURE__ */ React.createElement(
               Section,
               {
                 title: "Filesystem usage",
                 sub: filesystems.length ? `${filesystems.length} filesystem${filesystems.length === 1 ? "" : "s"}` : void 0
               },
-              !detail ? /* @__PURE__ */ React.createElement("div", { className: "cc-detail-empty" }, "Loading filesystem data from Zabbix\u2026") : /* @__PURE__ */ React.createElement("div", { className: "cc-fs-list" }, filesystems.map((fs) => /* @__PURE__ */ React.createElement("div", { className: "cc-fs-row", key: fs.mount }, /* @__PURE__ */ React.createElement("span", { className: "cc-fs-mount", title: fs.mount }, fs.mount), /* @__PURE__ */ React.createElement(UsageTrack, { value: fs.used, color: BAND_COLOR(fs.used) }), /* @__PURE__ */ React.createElement("span", { className: "cc-fs-value", style: { color: BAND_COLOR(fs.used) } }, fs.used.toFixed(0), "%"))), /* @__PURE__ */ React.createElement("div", { className: "cc-fs-legend" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { style: { background: "#00d47e" } }), " < 70%"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { style: { background: "#ffc107" } }), " 70\u201390%"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { style: { background: "#ff4d67" } }), " \u2265 90%")))
+              !detail ? /* @__PURE__ */ React.createElement("div", { className: "cc-detail-empty" }, "Loading filesystem data from Zabbix\u2026") : /* @__PURE__ */ React.createElement("div", { className: "cc-fs-list" }, filesystems.map((fs) => /* @__PURE__ */ React.createElement("div", { className: "cc-fs-row", key: fs.mount }, /* @__PURE__ */ React.createElement("span", { className: "cc-fs-mount", title: fs.mount }, fs.mount), /* @__PURE__ */ React.createElement(UsageTrack, { value: fs.used, color: BAND_COLOR(fs.used) }), /* @__PURE__ */ React.createElement("span", { className: "cc-fs-value", style: { color: BAND_COLOR(fs.used) } }, fs.used.toFixed(0), "%"))), /* @__PURE__ */ React.createElement("div", { className: "cc-fs-legend" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { style: { background: "#00d47e" } }), " < 70%"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { style: { background: "#ffc107" } }), " 70\u201390%"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { style: { background: "#ff3b30" } }), " \u2265 90%")), /* @__PURE__ */ React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "cc-fs-history",
+                  onClick: () => setHistoryTab("filesystems")
+                },
+                "View filesystem history \u2192"
+              ))
             ), /* @__PURE__ */ React.createElement(Section, { title: "This host vs fleet", sub: `${fleet.hosts} server${fleet.hosts === 1 ? "" : "s"} in view` }, /* @__PURE__ */ React.createElement("div", { className: "cc-cmp-list" }, METRICS.map((metric) => /* @__PURE__ */ React.createElement("div", { className: "cc-cmp-row", key: metric.key }, /* @__PURE__ */ React.createElement("div", { className: "cc-cmp-top" }, /* @__PURE__ */ React.createElement("span", null, metric.label.replace(" Utilisation", "")), /* @__PURE__ */ React.createElement("span", { className: "cc-muted" }, "host ", host[metric.key].toFixed(1), "% \xB7 fleet ", fleet[metric.key].toFixed(1), "%")), /* @__PURE__ */ React.createElement(
               UsageTrack,
               {
@@ -1086,13 +2078,13 @@ System.register(['react', '@grafana/data'], (function (exports) {
                 sub: `${hostProblems.length} problem${hostProblems.length === 1 ? "" : "s"}`
               },
               hostProblems.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "cc-detail-empty" }, "No active problems for this host.") : /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-detail-problems" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Severity"), /* @__PURE__ */ React.createElement("th", null, "Problem"), /* @__PURE__ */ React.createElement("th", null, "Current"), /* @__PURE__ */ React.createElement("th", null, "Age"), /* @__PURE__ */ React.createElement("th", null, "Ack"))), /* @__PURE__ */ React.createElement("tbody", null, hostProblems.map((problem) => /* @__PURE__ */ React.createElement("tr", { key: problem.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: `cc-sev cc-sev-${problem.severity.toLowerCase()}` }, problem.severity)), /* @__PURE__ */ React.createElement("td", { className: "cc-detail-problem-name" }, problem.problem), /* @__PURE__ */ React.createElement("td", null, problem.currentValue || "\u2014"), /* @__PURE__ */ React.createElement("td", null, problem.duration), /* @__PURE__ */ React.createElement("td", { className: problem.ack ? "cc-ack-yes" : "cc-ack-no" }, problem.ack ? "Yes" : "No"))))))
-            )),
+            ))),
             /* @__PURE__ */ React.createElement("div", { className: "cc-modal-foot" }, /* @__PURE__ */ React.createElement(
               "span",
               {
-                className: `cc-detail-note ${state === "error" ? "error" : detail && detail.partial ? "partial" : ""}`
+                className: `cc-detail-note ${state === "error" || historyState === "error" ? "error" : !historyTab && detail && detail.partial || historyTab && history && history.partial ? "partial" : ""}`
               },
-              detail ? detail.note : state === "loading" ? "Loading live details from Zabbix\u2026" : ""
+              historyTab ? historyState === "loading" ? "Loading history from Zabbix\u2026" : history ? history.note : "" : detail ? detail.note : state === "loading" ? "Loading live details from Zabbix\u2026" : ""
             ), inventoryHref ? /* @__PURE__ */ React.createElement("a", { className: "cc-modal-link", href: inventoryHref }, "Open in server inventory \u2192") : null)
           )
         );
@@ -1108,10 +2100,10 @@ System.register(['react', '@grafana/data'], (function (exports) {
         "Other Services": "app-srv"
       };
       const OS_POOL = [
-        ["Linux", 70],
-        ["Windows", 18],
-        ["AIX", 6],
-        ["Solaris", 6]
+        ["RHEL", 62],
+        ["Windows", 20],
+        ["Solaris", 10],
+        ["AS400", 8]
       ];
       const CRITICAL_PROBLEMS = [
         { text: "Disk space is low on /data", threshold: "> 90%" },
@@ -1172,9 +2164,9 @@ System.register(['react', '@grafana/data'], (function (exports) {
           flags: { unavailable: 8, maintenance: 12, stale: 8, warning: 13, critical: 15 },
           dataStates: { notMonitored: 5, noData: 8, stale: 16 },
           cpu: { critical: 18, warning: 60 },
-          memory: { critical: 24, warning: 84 },
-          disk: { critical: 32, warning: 100 },
-          network: { critical: 10, warning: 40 }
+          memory: { critical: 114, warning: 365 },
+          disk: { critical: 513, warning: 55 },
+          network: { critical: 20, warning: 63 }
         },
         {
           env: "DR",
@@ -1193,9 +2185,9 @@ System.register(['react', '@grafana/data'], (function (exports) {
           flags: { unavailable: 6, maintenance: 8, stale: 5, warning: 8, critical: 10 },
           dataStates: { notMonitored: 3, noData: 5, stale: 10 },
           cpu: { critical: 12, warning: 36 },
-          memory: { critical: 16, warning: 52 },
-          disk: { critical: 20, warning: 60 },
-          network: { critical: 7, warning: 26 }
+          memory: { critical: 72, warning: 231 },
+          disk: { critical: 324, warning: 35 },
+          network: { critical: 13, warning: 40 }
         },
         {
           env: "UAT",
@@ -1212,17 +2204,17 @@ System.register(['react', '@grafana/data'], (function (exports) {
           flags: { unavailable: 4, maintenance: 5, stale: 3, warning: 6, critical: 6 },
           dataStates: { notMonitored: 2, noData: 3, stale: 6 },
           cpu: { critical: 8, warning: 28 },
-          memory: { critical: 12, warning: 40 },
-          disk: { critical: 16, warning: 50 },
-          network: { critical: 5, warning: 20 }
+          memory: { critical: 62, warning: 200 },
+          disk: { critical: 281, warning: 30 },
+          network: { critical: 11, warning: 35 }
         }
       ];
-      function pad$1(n) {
+      function pad(n) {
         return n < 10 ? `0${n}` : String(n);
       }
       function formatTime(minutesAgo) {
         const d = new Date(Date.now() - minutesAgo * 6e4);
-        return `${d.getFullYear()}-${pad$1(d.getMonth() + 1)}-${pad$1(d.getDate())} ${pad$1(d.getHours())}:${pad$1(d.getMinutes())}`;
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
       }
       function durationLabel$1(minutes) {
         const m = Math.max(1, Math.round(minutes));
@@ -1245,33 +2237,21 @@ System.register(['react', '@grafana/data'], (function (exports) {
           (_, i) => Math.max(0, Math.min(100, Math.round(base + Math.sin(i / 2.8) * 5 + (r() - 0.5) * 9)))
         );
       }
-      function makeTopServers() {
-        const rows = [
-          ["core-bank-01", "PROD", "Tier 1", 98, 92, 81, "Core Banking"],
-          ["pay-batch-02", "PROD", "Tier 1", 96, 88, 76, "Payment Gateway"],
-          ["app-core-03", "PROD", "Tier 2", 94, 85, 89, "Other Services"],
-          ["db-uat-01", "UAT", "Tier 2", 91, 93, 72, "Other Services"],
-          ["web-portal-01", "PROD", "Tier 2", 88, 78, 84, "Internet Banking"],
-          ["rhdl-app-15", "PROD", "Tier 3", 86, 72, 68, "Other Services"],
-          ["app-dev-06", "UAT", "Tier 3", 84, 69, 74, "Other Services"],
-          ["integ-srv-02", "PROD", "Tier 3", 82, 77, 66, "Core Banking"],
-          ["rhel-dr-07", "DR", "Tier 3", 79, 71, 62, "Other Services"],
-          ["app-uat-09", "UAT", "Tier 3", 79, 68, 65, "Other Services"]
-        ];
-        return rows.map(([hostname, environment, tier, cpu, memory, disk, businessService], i) => ({
+      function makeTopServers(hosts) {
+        return hosts.slice().sort((a, b) => Math.max(b.cpu, b.memory, b.disk) - Math.max(a.cpu, a.memory, a.disk)).slice(0, 10).map((host, i) => ({
           rank: i + 1,
-          hostname,
-          environment,
-          tier,
-          os: "Linux",
-          businessService,
-          cpu,
-          memory,
-          disk,
+          hostname: host.hostname,
+          environment: host.environment,
+          tier: host.tier,
+          os: host.os,
+          businessService: host.businessService,
+          cpu: host.cpu,
+          memory: host.memory,
+          disk: host.disk,
           trends: {
-            cpu: trend(cpu, 100 + i),
-            memory: trend(memory, 200 + i),
-            disk: trend(disk, 300 + i)
+            cpu: trend(host.cpu, 100 + i),
+            memory: trend(host.memory, 200 + i),
+            disk: trend(host.disk, 300 + i)
           }
         }));
       }
@@ -1350,7 +2330,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
               const slug = SERVICE_SLUG[service] ?? "app-srv";
               nameCounters[slug] = (nameCounters[slug] ?? 0) + 1;
               const prefix = spec.env === "PROD" ? "" : spec.env === "DR" ? "dr-" : "uat-";
-              const hostname = `${prefix}${slug}-${pad$1(nameCounters[slug])}`;
+              const hostname = `${prefix}${slug}-${pad(nameCounters[slug])}`;
               envHosts.push({
                 id: hostId++,
                 hostname,
@@ -1422,18 +2402,18 @@ System.register(['react', '@grafana/data'], (function (exports) {
           });
           assignMetric(envHosts, "memory", spec.memory, {
             critical: [90, 99],
-            warning: [72, 89],
-            normal: [15, 65]
+            warning: [70, 89],
+            normal: [40, 69]
           });
           assignMetric(envHosts, "disk", spec.disk, {
-            critical: [90, 99],
-            warning: [75, 89],
-            normal: [15, 69]
+            critical: [94, 99],
+            warning: [70, 89],
+            normal: [45, 69]
           });
           assignMetric(envHosts, "network", spec.network, {
             critical: [90, 99],
-            warning: [70, 85],
-            normal: [5, 42]
+            warning: [70, 89],
+            normal: [48, 69]
           });
           hosts.push(...envHosts);
         }
@@ -1448,23 +2428,20 @@ System.register(['react', '@grafana/data'], (function (exports) {
         };
         criticalHosts.forEach((h, i) => {
           const template = pick(CRITICAL_PROBLEMS);
-          const highest = Math.max(h.cpu, h.memory, h.disk);
-          let problem = template.text;
-          let current = `${highest}%`;
-          let threshold = template.threshold;
-          if (highest === h.cpu) {
-            problem = "CPU utilization is too high";
-            current = `${h.cpu}%`;
-            threshold = "> 90%";
-          } else if (highest === h.memory) {
-            problem = "Memory utilization is too high";
-            current = `${h.memory}%`;
-            threshold = "> 90%";
-          } else {
-            problem = "Filesystem /var is full";
-            current = `${h.disk}%`;
-            threshold = "> 90%";
+          const breaching = [];
+          if (h.cpu >= 90) {
+            breaching.push({ text: "CPU utilization is too high", value: h.cpu });
           }
+          if (h.memory >= 90) {
+            breaching.push({ text: "Memory utilization is too high", value: h.memory });
+          }
+          if (h.disk >= 90) {
+            breaching.push({ text: "Filesystem /var is full", value: h.disk });
+          }
+          const chosen = breaching.length > 0 ? pick(breaching) : null;
+          let problem = chosen ? chosen.text : template.text;
+          let current = chosen ? `${chosen.value}%` : `${Math.max(h.cpu, h.memory, h.disk)}%`;
+          let threshold = chosen ? "> 90%" : template.threshold;
           const minutesAgo = randInt(1, 120);
           problems.push({
             id: problemId++,
@@ -1610,12 +2587,12 @@ System.register(['react', '@grafana/data'], (function (exports) {
           problems,
           businessServices,
           drComponents,
-          topServers: makeTopServers(),
+          topServers: makeTopServers(hosts),
           utilization: {
             cpu: { avg: 36, critical: 38, warning: 124, normal: 1106 },
-            memory: { avg: 48, critical: 52, warning: 176, normal: 1040 },
-            disk: { avg: 52, critical: 68, warning: 210, normal: 2481 },
-            network: { avg: 28, critical: 22, warning: 86, normal: 2345 }
+            memory: { avg: 78, critical: 248, warning: 796, normal: 224 },
+            disk: { avg: 94, critical: 1118, warning: 120, normal: 30 },
+            network: { avg: 62, critical: 44, warning: 138, normal: 1086 }
           },
           kpiDeltas: {
             available: "\u25B2 +7 (24h)",
@@ -1629,6 +2606,2211 @@ System.register(['react', '@grafana/data'], (function (exports) {
         return (filters.environment === "All" || host.environment === filters.environment) && (filters.tier === "All" || host.tier === filters.tier) && (filters.hostGroup === "All" || host.hostGroup === filters.hostGroup) && (filters.os === "All" || host.os === filters.os) && (filters.businessService === "All" || host.businessService === filters.businessService);
       }
 
+      const CSS = `
+/* \u2500\u2500 Magic UI design tokens \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.cc-app {
+  --bg: #04080f;
+  --panel: #0b1627;
+  --panel-2: #0e1c31;
+  --border: #14253c;
+  --border-soft: rgba(20, 37, 60, 0.6);
+  --ink: #dbe7f5;
+  --ink-2: #9fb3cc;
+  --muted: #7d92ad;
+  --blue: #2f9bff;
+  --cyan: #00d4ff;
+  --purple: #8b5cf6;
+  --green: #00d47e;
+  --amber: #ffc107;
+  --orange: #ff8a3d;
+  --red: #ff4d67;
+  --surface: #0a1526;
+
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  margin: 0;
+  padding: 14px 18px 28px;
+  overflow-x: hidden;
+  background:
+    radial-gradient(1100px 480px at 12% -12%, rgba(20, 70, 140, 0.24), transparent 62%),
+    radial-gradient(900px 420px at 88% -6%, rgba(120, 60, 220, 0.14), transparent 60%),
+    radial-gradient(760px 380px at 50% 108%, rgba(0, 140, 150, 0.1), transparent 65%),
+    var(--bg);
+  color: var(--ink);
+  font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.cc-app *,
+.cc-app *::before,
+.cc-app *::after { box-sizing: border-box; }
+
+/* Grafana sets a 1.5 line-height on body; without this reset it leaks into
+   fixed-height selects/inputs and pushes their single line of text down into
+   the bottom border. The concept build uses the browser default. */
+.cc-app select,
+.cc-app input,
+.cc-app textarea {
+  font-family: inherit;
+  line-height: normal;
+}
+
+.cc-app::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(120, 170, 255, 0.1) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 55%, transparent 100%);
+}
+
+/* Lift page content above the aurora backdrop, but leave fixed overlays
+   (the host-detail drawer) alone \u2014 this selector otherwise out-specifies
+   their position: fixed and renders them inline at the bottom of the page. */
+.cc-app > :not(.cc-aurora):not(.cc-modal-backdrop):not(style) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Drifting aurora orbs (Magic UI backdrop). */
+/* The orbs are already soft radial gradients. An animated element with a
+   blur() filter forces the browser to re-rasterise the filter every frame; on
+   an always-on wall display that exhausts the GPU process and the tab ends up
+   blank after a while. Keep the soft gradient, drop the filter. */
+.cc-aurora {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.cc-aurora.a1 {
+  top: -180px;
+  left: -160px;
+  width: 700px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(47, 155, 255, 0.36), transparent 65%);
+  animation: cc-drift-a 19s ease-in-out infinite alternate;
+}
+
+.cc-aurora.a2 {
+  top: 60px;
+  right: -200px;
+  width: 640px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.3), transparent 66%);
+  animation: cc-drift-b 23s ease-in-out infinite alternate;
+}
+
+.cc-aurora.a3 {
+  top: 520px;
+  left: 38%;
+  width: 560px;
+  height: 380px;
+  opacity: 0.35;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.18), transparent 68%);
+  animation: cc-drift-a 27s ease-in-out infinite alternate-reverse;
+}
+
+/* \u2500\u2500 Header \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 22px;
+  margin-bottom: 14px;
+}
+
+.cc-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  min-width: 0;
+}
+
+.cc-logo {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(47, 155, 255, 0.24), rgba(139, 92, 246, 0.14));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 26px -12px rgba(47, 155, 255, 0.8);
+}
+
+.cc-logo span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Configured logo: a wider, unpadded slot keeps the image inside the header
+   line without distorting non-square artwork. */
+.cc-logo.cc-logo-image {
+  width: auto;
+  min-width: 40px;
+  max-width: 160px;
+  padding: 2px 6px;
+  background: rgba(8, 18, 33, 0.55);
+}
+
+.cc-logo-image img {
+  display: block;
+  max-width: 148px;
+  max-height: 34px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(47, 155, 255, 0.35));
+}
+
+.cc-eyebrow {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+}
+
+.cc-eyebrow span { opacity: 0.5; }
+
+.cc-title {
+  margin: 4px 0 5px;
+  font-size: clamp(17px, 1.55vw, 22px);
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1.1;
+  white-space: nowrap;
+  background: linear-gradient(90deg, #9bd0ff 0%, #e8f4ff 24%, #c4b5fd 50%, #7fc4ff 76%, #9bd0ff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: cc-title-shine 9s linear infinite;
+}
+
+.cc-subtitle {
+  margin-top: 1px;
+  color: var(--ink-2);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+}
+
+/* \u2500\u2500 Header filters (collapsible, compact grid) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-header-filters {
+  display: flex;
+  flex: 1 1 520px;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
+  min-width: 0;
+  max-width: 640px;
+  margin: 0 2px;
+}
+
+.cc-filter-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(148, 184, 230, 0.26);
+  border-radius: 7px;
+  background: rgba(47, 155, 255, 0.1);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.cc-filter-toggle:hover {
+  border-color: rgba(127, 196, 255, 0.5);
+  background: rgba(47, 155, 255, 0.16);
+  color: var(--ink);
+}
+
+.cc-filter-toggle:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(47, 155, 255, 0.2);
+}
+
+.cc-filter-caret {
+  font-size: 10px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.cc-header-filters.collapsed .cc-filter-caret { transform: rotate(-90deg); }
+
+.cc-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(47, 155, 255, 0.28);
+  color: #d6ecff;
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-filter-summary {
+  display: none;
+  max-width: 30vw;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-filter-summary[hidden] { display: none; }
+
+.cc-header-filters.collapsed .cc-filter-summary { display: inline-block; }
+.cc-header-filters.collapsed .cc-filter-controls { display: none; }
+
+/* When collapsed, the group must shrink to just the toggle + active summary.
+   Keeping the expanded flex-basis here steals the width the clock/Zabbix
+   cluster needs and pushes it onto a second header row. */
+.cc-header-filters.collapsed {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.cc-filter-controls {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 7px 9px;
+  min-width: 0;
+}
+
+.cc-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cc-filter label {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.cc-filter select {
+  width: 100%;
+  height: 26px;
+  padding: 0 22px 0 8px;
+  border: 1px solid rgba(148, 184, 230, 0.22);
+  border-radius: 7px;
+  outline: none;
+  background-color: rgba(6, 12, 22, 0.85);
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(219, 231, 245, 0.65) 50%),
+    linear-gradient(135deg, rgba(219, 231, 245, 0.65) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px;
+  color: var(--ink);
+  font-size: 10.5px;
+  /* With appearance:none the single line of text is laid out in a line box;
+     matching it to the 24px content height keeps the option text centred
+     instead of sitting on the bottom border. */
+  line-height: 24px;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.cc-filter select:hover { border-color: rgba(127, 196, 255, 0.4); }
+
+.cc-filter select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(47, 155, 255, 0.2);
+}
+
+.cc-filter select option { background: #0b1424; color: var(--ink); }
+
+.cc-filter-reset {
+  width: 100%;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 184, 230, 0.24);
+  border-radius: 6px;
+  background: rgba(148, 184, 230, 0.08);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.cc-filter-reset:hover {
+  border-color: rgba(127, 196, 255, 0.45);
+  background: rgba(47, 155, 255, 0.14);
+  color: var(--ink);
+}
+
+.cc-filter-reset:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(47, 155, 255, 0.2);
+}
+
+.cc-header-filters.is-filtered .cc-filter-reset {
+  border-color: rgba(127, 196, 255, 0.5);
+  background: rgba(47, 155, 255, 0.16);
+  color: var(--ink);
+}
+
+/* \u2500\u2500 Header right cluster \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-header-right {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.cc-mode {
+  display: flex;
+  align-self: center;
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 7px;
+  background: rgba(10, 20, 36, 0.6);
+}
+
+.cc-mode button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 9px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.cc-mode button:hover { color: var(--ink); }
+.cc-mode button.active { background: rgba(47, 155, 255, 0.22); color: #fff; }
+
+.cc-mode .cc-mode-note {
+  padding: 5px 9px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: rgba(47, 155, 255, 0.16);
+  color: #dfe9f6;
+  white-space: nowrap;
+}
+
+.cc-clock { text-align: right; padding: 2px 2px; }
+
+.cc-clock-date { color: var(--muted); font-size: 9px; letter-spacing: 0.04em; }
+
+.cc-clock-time {
+  margin-top: 1px;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.cc-clock-zone { margin-left: 5px; color: var(--muted); font-size: 9px; font-weight: 400; }
+
+.cc-zabbix {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 158px;
+  padding: 7px 10px;
+  border: 1px solid rgba(0, 212, 126, 0.24);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(9, 34, 25, 0.72), rgba(6, 20, 16, 0.72));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  /* Deliberately no backdrop-filter: it re-blurs the animated aurora behind
+     this element on every frame and eventually blanks the GPU process. */
+}
+
+.cc-zabbix-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(0, 212, 126, 0.45);
+  animation: cc-live-pulse 2.4s ease-out infinite;
+}
+
+.cc-zabbix-label { font-size: 11px; font-weight: 800; letter-spacing: 0.6px; color: #9ff3c5; }
+.cc-zabbix-sub { margin-top: 1px; font-size: 8.5px; color: #6fbf94; }
+
+.cc-sample-badge {
+  margin-left: auto;
+  padding: 1px 4px;
+  border: 1px solid #5b4a14;
+  border-radius: 3px;
+  background: rgba(255, 193, 7, 0.08);
+  color: var(--amber);
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.cc-sample-badge.is-live { color: var(--green); border-color: #1c4a36; background: rgba(0, 230, 118, 0.08); }
+.cc-sample-badge.is-error { color: var(--red); border-color: #5b1c26; background: rgba(255, 77, 103, 0.08); }
+
+.cc-zabbix.is-error {
+  border-color: #5b1c26;
+  background: linear-gradient(180deg, rgba(52, 10, 16, 0.72), rgba(26, 6, 9, 0.72));
+}
+
+.cc-zabbix.is-error .cc-zabbix-dot { background: var(--red); box-shadow: 0 0 0 0 rgba(255, 77, 103, 0.45); animation-name: cc-live-pulse-red; }
+.cc-zabbix.is-loading .cc-zabbix-dot { background: var(--amber); box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.45); animation-name: cc-live-pulse-amber; }
+.cc-zabbix.is-sample .cc-zabbix-dot { background: var(--amber); box-shadow: none; animation: none; opacity: 0.85; }
+
+/* \u2500\u2500 Banners \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-banner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 8px 11px;
+  border: 1px solid #5b1c26;
+  border-radius: 10px;
+  background: rgba(255, 61, 87, 0.08);
+  color: #ffb3bf;
+  font-size: 10px;
+  /* Deliberately no backdrop-filter: it re-blurs the animated aurora behind
+     this element on every frame and eventually blanks the GPU process. */
+}
+
+.cc-banner strong { color: var(--red); font-weight: 800; }
+.cc-banner.warn { border-color: #5b4a14; background: rgba(255, 193, 7, 0.08); color: #ffe08a; }
+.cc-banner.warn strong { color: var(--amber); }
+
+.cc-banner-btn {
+  margin-left: auto;
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffe08a;
+  background: rgba(255, 193, 7, 0.12);
+  border: 1px solid #5b4a14;
+  border-radius: 5px;
+  padding: 4px 9px;
+  white-space: nowrap;
+}
+
+.cc-banner-btn:hover { background: rgba(255, 193, 7, 0.2); }
+
+/* \u2500\u2500 Live problems ticker \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-ticker {
+  display: flex;
+  align-items: stretch;
+  height: 44px;
+  margin: 0 0 14px;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 13px;
+  background: rgba(10, 20, 36, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  /* Deliberately no backdrop-filter: it re-blurs the animated aurora behind
+     this element on every frame and eventually blanks the GPU process. */
+}
+
+.cc-ticker-label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px;
+  border-right: 1px solid rgba(255, 193, 7, 0.16);
+  background: linear-gradient(90deg, rgba(255, 193, 7, 0.1), transparent);
+  color: #ffd27a;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+}
+
+.cc-live-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(0, 212, 126, 0.45);
+  animation: cc-live-pulse 2.4s ease-out infinite;
+}
+
+.cc-live-dot.amber {
+  background: var(--amber);
+  box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.45);
+  animation-name: cc-live-pulse-amber;
+}
+
+.cc-ticker-viewport {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent);
+}
+
+.cc-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: cc-marquee 80s linear infinite;
+}
+
+.cc-ticker:hover .cc-ticker-track { animation-play-state: paused; }
+
+.cc-ticker-set {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  padding-right: 34px;
+}
+
+/* Blank sweep between loops of the problem list. A full viewport width of
+   empty space means the next copy cannot appear until the current one has
+   scrolled away, so a repeated list \u2014 especially a single repeated problem \u2014
+   reads as a restart instead of a run-on row. */
+.cc-ticker-gap {
+  flex: 0 0 auto;
+  width: 100vw;
+}
+
+.cc-ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.cc-ticker-item b { color: var(--ink); font-weight: 600; }
+.cc-ticker-item em { color: var(--muted); font-style: normal; font-variant-numeric: tabular-nums; }
+
+/* Severity chip: the table renders severity as coloured text, but the ticker
+   uses the concept's pill treatment with a leading status dot. */
+.cc-ticker .cc-ticker-sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.cc-ticker .cc-ticker-sev::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.cc-ticker .cc-ticker-sev.cc-sev-critical {
+  border-color: rgba(255, 77, 103, 0.24);
+  background: rgba(255, 77, 103, 0.1);
+  color: #ff8a9b;
+}
+.cc-ticker .cc-ticker-sev.cc-sev-critical::before { background: var(--red); }
+
+.cc-ticker .cc-ticker-sev.cc-sev-high {
+  border-color: rgba(255, 138, 61, 0.24);
+  background: rgba(255, 138, 61, 0.1);
+  color: #ffb07a;
+}
+.cc-ticker .cc-ticker-sev.cc-sev-high::before { background: var(--orange); }
+
+.cc-ticker .cc-ticker-sev.cc-sev-warning {
+  border-color: rgba(255, 193, 7, 0.24);
+  background: rgba(255, 193, 7, 0.09);
+  color: #ffd45e;
+}
+.cc-ticker .cc-ticker-sev.cc-sev-warning::before { background: var(--amber); }
+
+.cc-ticker .cc-ticker-sev.cc-sev-info {
+  border-color: rgba(47, 155, 255, 0.24);
+  background: rgba(47, 155, 255, 0.1);
+  color: #8ecbff;
+}
+.cc-ticker .cc-ticker-sev.cc-sev-info::before { background: var(--blue); }
+
+/* \u2500\u2500 KPI row (MagicCard tiles) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-kpis {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cc-kpi {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-height: 60px;
+  padding: 11px 11px;
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 33, 56, 0.78), rgba(7, 14, 26, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 50px -30px rgba(0, 80, 180, 0.9);
+  /* No backdrop-filter: the panels are opaque enough without paying for a
+     per-frame blur of the animated backdrop (see the aurora note above). */
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cc-kpi > * { position: relative; z-index: 1; }
+
+.cc-kpi::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(280px circle at 30% 0%, rgba(96, 165, 250, 0.13), transparent 65%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.cc-kpi:hover {
+  transform: translateY(-1px);
+  border-color: rgba(127, 196, 255, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 22px 60px -30px rgba(47, 155, 255, 0.75);
+}
+
+.cc-kpi:hover::after { opacity: 1; }
+
+.cc-kpi-alert {
+  border-color: rgba(255, 77, 103, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 50px -30px rgba(255, 61, 87, 0.6);
+}
+
+.cc-beam {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 0 68%,
+    var(--red) 86%,
+    #ffffff 92%,
+    var(--red) 96%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  /* Static sheen: animating a conic-gradient's angle repaints the whole card
+     border every frame, which is the other per-frame rasterisation cost. */
+  pointer-events: none;
+}
+
+.cc-kpi-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 16px rgba(47, 155, 255, 0.08);
+  color: var(--tone);
+}
+
+.cc-kpi-body { min-width: 0; }
+
+.cc-kpi-label {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.cc-kpi-value {
+  margin-top: 1px;
+  color: var(--ink);
+  font-size: clamp(19px, 1.55vw, 23px);
+  font-weight: 700;
+  line-height: 1.08;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 22px rgba(127, 196, 255, 0.18);
+}
+
+/* Semantic counts: red = down/critical, amber = attention, green = healthy. */
+.cc-kpi[data-tone="green"] .cc-kpi-value { color: var(--green); }
+.cc-kpi[data-tone="red"] .cc-kpi-value { color: var(--red); }
+.cc-kpi[data-tone="yellow"] .cc-kpi-value,
+.cc-kpi[data-tone="orange"] .cc-kpi-value { color: var(--amber); }
+.cc-kpi[data-tone="purple"] .cc-kpi-value { color: #fff; }
+.cc-kpi[data-tone="gray"] .cc-kpi-value { color: var(--red); }
+.cc-kpi[data-tone="cyan"] .cc-kpi-value { color: var(--blue); }
+
+.cc-kpi-sub {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--ink-2);
+  font-size: 8.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-kpi-delta { margin-left: 3px; font-size: 8px; font-weight: 700; }
+.cc-delta-up { color: var(--orange); }
+.cc-delta-down { color: var(--green); }
+
+.cc-kpi-link { color: inherit; text-decoration: none; cursor: pointer; }
+.cc-kpi-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+.cc-kpi-link::before {
+  content: "\u203A";
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 2;
+  color: #5f83ad;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.cc-kpi-link:hover::before { color: #9cc9ff; opacity: 1; }
+
+/* \u2500\u2500 Panels (glass cards) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-panel {
+  position: relative;
+  min-width: 0;
+  padding: 13px 14px;
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 33, 56, 0.78), rgba(7, 14, 26, 0.86));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 50px -30px rgba(0, 80, 180, 0.9);
+  /* No backdrop-filter: the panels are opaque enough without paying for a
+     per-frame blur of the animated backdrop (see the aurora note above). */
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cc-panel > * { position: relative; z-index: 1; }
+
+.cc-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(320px circle at 30% 0%, rgba(96, 165, 250, 0.1), transparent 68%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.cc-panel:hover {
+  border-color: rgba(127, 196, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 22px 60px -30px rgba(47, 155, 255, 0.75);
+}
+
+.cc-panel:hover::after { opacity: 1; }
+
+.cc-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.cc-panel-title {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cc-panel-sub { margin-top: 2px; color: var(--muted); font-size: 8.5px; }
+
+/* \u2500\u2500 Utilisation ring cards \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-util-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cc-util-body {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 0;
+  margin-top: 11px;
+}
+
+.cc-ring {
+  --p: 0;
+  --fill: var(--green);
+  position: relative;
+  flex: none;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background: conic-gradient(var(--fill) calc(var(--p) * 1%), rgba(255, 255, 255, 0.07) 0);
+  box-shadow: 0 0 24px -6px rgba(127, 196, 255, 0.35);
+  transition: --p 1.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cc-ring::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.cc-ring-inner {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.cc-ring-inner strong {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-ring-inner span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.cc-util-right { flex: 1; min-width: 0; }
+
+.cc-stackbar {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cc-seg { display: block; height: 100%; border-radius: 2px; transition: flex-grow 0.4s ease; }
+.cc-seg:first-child { border-radius: 4px 2px 2px 4px; }
+.cc-seg:last-child { border-radius: 2px 4px 4px 2px; }
+.cc-seg.crit { background: var(--red); }
+.cc-seg.warn { background: var(--amber); }
+.cc-seg.ok { background: var(--green); }
+
+.cc-legend { display: grid; gap: 4px; margin-top: 8px; }
+
+.cc-legend-row {
+  display: grid;
+  grid-template-columns: 7px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  color: var(--ink-2);
+  font-size: 8.5px;
+}
+
+.cc-legend-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cc-legend-value { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.cc-dot { display: inline-block; width: 6px; height: 6px; border-radius: 2px; flex: 0 0 auto; }
+.cc-dot.cc-dot-stale { background: transparent; box-shadow: inset 0 0 0 1.5px #8f9298; }
+
+/* \u2500\u2500 Host group matrix \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cc-group { padding: 12px 14px; }
+
+.cc-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.cc-group-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.cc-env-dot { display: inline-block; width: 7px; height: 7px; border-radius: 2px; flex: 0 0 auto; }
+.cc-env-dot.prod { background: var(--blue); box-shadow: 0 0 10px rgba(47, 155, 255, 0.7); }
+.cc-env-dot.dr { background: var(--purple); box-shadow: 0 0 10px rgba(139, 92, 246, 0.7); }
+.cc-env-dot.uat { background: var(--cyan); box-shadow: 0 0 10px rgba(0, 212, 255, 0.6); }
+
+.cc-group-total { color: var(--muted); font-size: 9px; font-weight: 500; letter-spacing: 0.02em; }
+
+.cc-group-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.cc-lg { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.cc-lg i { display: inline-block; width: 5px; height: 5px; border-radius: 1.5px; }
+.cc-lg.ok i { background: var(--green); }
+.cc-lg.warn i { background: var(--amber); }
+.cc-lg.crit i { background: #ff3b30; }
+.cc-lg.other i { background: #8f9298; }
+
+.cc-grid-wrap { padding: 0; }
+
+.cc-tier-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 7px 0;
+  margin: 0;
+  border-top: 1px dashed rgba(20, 37, 60, 0.75);
+}
+
+.cc-tier-row:nth-of-type(1) { border-top: 0; }
+
+.cc-tier-label { width: auto; min-width: 0; padding-top: 1px; }
+
+.cc-tier-title {
+  color: var(--ink);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cc-tier-sub {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cc-tier-counts { display: flex; gap: 4px; margin-top: 2px; }
+.cc-tier-counts span { font-size: 7.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.cc-host-grid {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-content: flex-start;
+  min-height: 8px;
+}
+
+.cc-cell {
+  position: relative;
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 1.5px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.cc-cell-btn { appearance: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.cc-cell-btn:hover { z-index: 5; transform: scale(2.6); box-shadow: 0 0 0 1px #fff, 0 0 10px 2px rgba(255, 255, 255, 0.35); }
+.cc-cell-btn:focus-visible { outline: 2px solid #fff; outline-offset: 1px; z-index: 6; }
+
+/* Solid, high-contrast fills: at 7px the diagonal stripe treatment blurred
+   together and made stale / maintenance / unavailable indistinguishable. */
+/* Health palette, tuned for 7px solid squares on the dark panel:
+   critical is a true red (not pink), unavailable a clearly violet fuchsia,
+   stale a neutral grey with no blue cast, maintenance a saturated azure. */
+.cc-cell-healthy { background: rgba(0, 212, 126, 0.55); }
+.cc-cell-warning { background: #ffc107; }
+.cc-cell-critical { background: #ff3b30; box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4); }
+/* Stale is hollow rather than filled: shape carries the state even when the
+   grey and cyan read close at 7px on a blue-tinted panel. */
+.cc-cell-stale { background: rgba(143, 146, 152, 0.1); box-shadow: inset 0 0 0 1.5px #8f9298; }
+.cc-cell-maintenance { background: #22d3ee; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.cc-cell-unavailable { background: #a855f7; box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.5); }
+
+.cc-cell-critical::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid rgba(255, 59, 48, 0.75);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: cc-cell-ring 2.4s ease-in-out infinite;
+}
+
+.cc-legend-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 7px 0 0;
+  margin-top: 6px;
+  border-top: 1px solid rgba(20, 37, 60, 0.6);
+  color: var(--muted);
+  font-size: 7.8px;
+}
+
+.cc-legend-inline span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* \u2500\u2500 Bottom row (3 panels) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-bottom {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cc-table-wrap { overflow-x: auto; }
+
+.cc-table {
+  width: 100%;
+  margin-top: 9px;
+  border-collapse: collapse;
+  font-size: 9.5px;
+}
+
+.cc-table th {
+  padding: 0 6px 5px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cc-table td {
+  padding: 5.5px 6px 5.5px 0;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink-2);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.cc-table tbody tr:last-child td { border-bottom: 0; }
+.cc-table tbody tr:hover td { background: rgba(47, 155, 255, 0.05); }
+.cc-table tr.cc-row-link { cursor: pointer; }
+.cc-table tr.cc-row-link:hover td { background: rgba(47, 155, 255, 0.08); }
+.cc-table tr.cc-row-link:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+
+.cc-row-anchor { display: inline-flex; align-items: center; gap: 4px; color: #e6f0fb; text-decoration: none; font-weight: 700; }
+.cc-row-anchor:hover { color: #7fc4ff; text-decoration: underline; }
+
+/* Hostnames open the per-server statistics drawer wherever they appear. */
+.cc-host-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cc-host-link:hover { color: #7fc4ff; text-decoration: underline; }
+.cc-host-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 3px; }
+
+.cc-ticker-host {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.cc-ticker-host:hover { color: #9bd0ff; text-decoration: underline; }
+.cc-ticker-host:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; border-radius: 3px; }
+.cc-row-arrow { color: #5f83ad; font-size: 11px; line-height: 1; }
+.cc-row-link:hover .cc-row-arrow { color: #9cc9ff; }
+.cc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.cc-status { font-weight: 800; font-size: 8.5px; }
+.cc-status-critical { color: var(--red); }
+.cc-status-high { color: var(--orange); }
+.cc-status-warning { color: var(--amber); }
+.cc-status-healthy { color: var(--green); }
+.cc-muted { color: #6f86a3; }
+.cc-strong { color: #e6f0fb; font-weight: 700; }
+
+.cc-tabs {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  margin-top: 9px;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 7px;
+  background: rgba(10, 20, 36, 0.6);
+}
+
+.cc-tab {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 8.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.cc-tab:hover { color: var(--ink); }
+.cc-tab.active { color: var(--ink); background: rgba(47, 155, 255, 0.14); box-shadow: inset 0 0 0 1px rgba(47, 155, 255, 0.28); }
+
+.cc-spark { display: block; width: 64px; height: 18px; }
+.cc-bar-cell { display: flex; align-items: center; gap: 5px; }
+.cc-mini-track { display: inline-block; width: 44px; height: 5px; overflow: hidden; border-radius: 3px; background: #12233a; }
+.cc-mini-fill { display: block; height: 100%; border-radius: 3px; }
+
+/* \u2500\u2500 Problems panel \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-problems { margin-bottom: 2px; }
+
+.cc-problem-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 0 9px;
+  border-bottom: 0;
+}
+
+.cc-problem-tabs .cc-spacer { flex: 1; }
+
+.cc-problem-tabs .cc-tab {
+  padding: 3px 9px;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 999px;
+  background: rgba(10, 20, 36, 0.5);
+}
+
+.cc-problem-tabs .cc-tab.active {
+  border-color: rgba(47, 155, 255, 0.4);
+  background: rgba(47, 155, 255, 0.16);
+  box-shadow: none;
+}
+
+.cc-problem-scroll {
+  max-height: 430px;
+  overflow: auto;
+  border-radius: 8px;
+}
+
+.cc-problem-scroll .cc-table-wrap { overflow: visible; }
+
+.cc-problem-table { font-size: 8.8px; }
+.cc-problem-table td { padding: 4px 6px; }
+
+.cc-problem-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0a1526;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.cc-sev { font-weight: 800; text-transform: uppercase; font-size: 8px; letter-spacing: 0.2px; }
+.cc-sev-critical { color: var(--red); }
+.cc-sev-high { color: var(--orange); }
+.cc-sev-warning { color: var(--amber); }
+.cc-sev-info { color: var(--blue); }
+
+.cc-duration { color: var(--amber); font-weight: 700; }
+.cc-sla-within { color: var(--green); font-weight: 700; }
+.cc-sla-risk { color: var(--amber); font-weight: 700; }
+.cc-sla-breach { color: var(--red); font-weight: 700; }
+.cc-ack-yes { color: var(--green); }
+.cc-ack-no { color: var(--red); }
+.cc-related { color: #7fc4ff; }
+
+/* .cc-table td sets a base ink colour and out-specifies the semantic
+   classes, so severity / SLA / ack cells rendered plain white. Re-assert
+   them at cell specificity. */
+.cc-table td.cc-sev-critical { color: var(--red); }
+.cc-table td.cc-sev-high { color: var(--orange); }
+.cc-table td.cc-sev-warning { color: var(--amber); }
+.cc-table td.cc-sev-info { color: var(--blue); }
+.cc-table td.cc-duration { color: var(--amber); }
+.cc-table td.cc-sla-within { color: var(--green); }
+.cc-table td.cc-sla-risk { color: var(--amber); }
+.cc-table td.cc-sla-breach { color: var(--red); }
+.cc-table td.cc-ack-yes { color: var(--green); }
+.cc-table td.cc-ack-no { color: var(--red); }
+.cc-table td.cc-related { color: #7fc4ff; }
+.cc-table td.cc-muted { color: #6f86a3; }
+.cc-table td.cc-strong { color: #e6f0fb; }
+
+.cc-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 2px 0;
+  color: #5f7591;
+  font-size: 8px;
+}
+
+/* \u2500\u2500 Host detail drawer \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 22px 16px;
+  overflow-y: auto;
+  /* Opaque overlay instead of a full-screen backdrop blur; the drawer still
+     reads as a layer above the dashboard. */
+  background: rgba(2, 7, 14, 0.88);
+}
+
+.cc-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(1000px, 100%);
+  max-height: calc(100vh - 44px);
+  margin: auto;
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 33, 56, 0.96), rgba(7, 14, 26, 0.98));
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: cc-modal-in 0.15s ease-out;
+  isolation: isolate;
+}
+
+/* Keep the drawer's content above the aurora blobs and border beam. */
+.cc-modal > :not(.cc-modal-aurora):not(.cc-modal-beam) { position: relative; z-index: 1; }
+
+.cc-modal-aurora {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.cc-modal-aurora.a1 {
+  top: -150px;
+  left: -120px;
+  width: 460px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(47, 155, 255, 0.4), transparent 65%);
+  animation: cc-drift-a 17s ease-in-out infinite alternate;
+}
+
+.cc-modal-aurora.a2 {
+  top: 30px;
+  right: -150px;
+  width: 420px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.32), transparent 66%);
+  animation: cc-drift-b 21s ease-in-out infinite alternate;
+}
+
+.cc-modal-beam {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 0 58%,
+    rgba(47, 155, 255, 0.95) 72%,
+    #c4b5fd 83%,
+    rgba(0, 212, 255, 0.95) 92%,
+    transparent 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.cc-modal-head {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(27, 52, 81, 0.8);
+  background: linear-gradient(90deg, rgba(24, 54, 88, 0.35), transparent);
+}
+
+.cc-modal-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cc-modal-source {
+  padding: 2px 6px;
+  border: 1px solid #1c4a36;
+  border-radius: 3px;
+  background: rgba(0, 230, 118, 0.08);
+  color: var(--green);
+  font-size: 7.5px;
+  letter-spacing: 0.6px;
+}
+
+.cc-modal-source.sample { color: var(--amber); border-color: #5b4a14; background: rgba(255, 193, 7, 0.08); }
+
+.cc-modal-title {
+  margin-top: 5px;
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  word-break: break-word;
+  background: linear-gradient(90deg, #9bd0ff 0%, #e8f4ff 26%, #c4b5fd 52%, #7fc4ff 78%, #9bd0ff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: cc-title-shine 9s linear infinite;
+}
+
+.cc-modal-sub { margin-top: 5px; color: var(--ink-2); font-size: 9.5px; }
+
+.cc-modal-close {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 8px;
+  background: rgba(10, 20, 36, 0.7);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cc-modal-close:hover { color: #fff; border-color: rgba(127, 196, 255, 0.5); background: rgba(47, 155, 255, 0.12); }
+
+.cc-modal-body { overflow-y: auto; padding: 13px 18px 16px; }
+
+.cc-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 9px; }
+
+.cc-metric-card {
+  position: relative;
+  min-width: 0;
+  padding: 9px 10px 7px;
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.14);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(17, 33, 56, 0.7), rgba(7, 14, 26, 0.8));
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.cc-metric-card > * { position: relative; z-index: 1; }
+
+.cc-metric-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(220px circle at 30% 0%, rgba(96, 165, 250, 0.16), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.cc-metric-card:hover {
+  border-color: rgba(127, 196, 255, 0.32);
+  box-shadow: 0 14px 40px -24px rgba(47, 155, 255, 0.8);
+  transform: translateY(-1px);
+}
+
+.cc-metric-card:hover::after { opacity: 1; }
+
+.cc-gauge-fill { animation: cc-gauge-draw 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+.cc-spark-line {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: cc-spark-draw 1.3s ease 0.15s forwards;
+}
+
+.cc-usage-track > span {
+  transform-origin: left center;
+  animation: cc-usage-grow 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.cc-gauge { position: relative; width: 100%; max-width: 150px; margin: 0 auto; }
+.cc-gauge svg { display: block; width: 100%; height: auto; }
+
+.cc-gauge-center {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.cc-gauge-center strong { font-size: 22px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cc-gauge-center span { font-size: 9px; color: var(--muted); }
+
+.cc-metric-info { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.cc-metric-name { color: var(--ink); font-size: 8.5px; font-weight: 700; }
+.cc-metric-band { margin-left: auto; font-size: 7.5px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; }
+.cc-metric-fleet { width: 100%; color: var(--muted); font-size: 8px; }
+.cc-detail-spark { display: block; width: 100%; height: 38px; margin-top: 5px; }
+
+.cc-detail-spark-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  margin-top: 5px;
+  border-top: 1px dashed var(--border);
+  color: #5f7591;
+  font-size: 8px;
+}
+
+.cc-metric-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 3px;
+  color: #5f7591;
+  font-size: 7.5px;
+}
+.cc-metric-foot > span:last-child { margin-left: auto; }
+.cc-metric-range { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.cc-metric-range b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cc-metric-range b.peak { color: #ff6b62; }
+.cc-metric-range b.low { color: #00d47e; }
+.cc-metric-range em { color: #3f5470; font-style: normal; }
+
+.cc-detail-grid { display: grid; grid-template-columns: 1.08fr 1fr 0.86fr; gap: 9px; margin-bottom: 9px; }
+.cc-detail-panel-body { padding: 2px 0 0; }
+
+.cc-fs-list { display: flex; flex-direction: column; gap: 7px; }
+.cc-fs-row { display: flex; align-items: center; gap: 7px; }
+
+.cc-fs-mount {
+  width: 52px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 8.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cc-fs-value {
+  width: 32px;
+  flex: 0 0 auto;
+  text-align: right;
+  font-size: 8.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-usage-track { position: relative; flex: 1; height: 7px; overflow: hidden; border-radius: 4px; background: #12233a; }
+.cc-usage-track > span { display: block; height: 100%; border-radius: 4px; }
+.cc-usage-track > i { position: absolute; top: -2px; bottom: -2px; width: 1.5px; background: var(--ink); opacity: 0.7; }
+
+.cc-fs-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; color: var(--muted); font-size: 7.5px; }
+.cc-fs-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.cc-fs-legend i { display: inline-block; width: 6px; height: 6px; border-radius: 2px; }
+
+.cc-fs-history {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 3px 0;
+  border: 0;
+  background: none;
+  color: #7fb6ff;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cc-fs-history:hover { color: #dbe7f5; }
+
+/* Clickable metric cards open the historical view. */
+.cc-metric-card.cc-metric-click { cursor: pointer; }
+.cc-metric-card.cc-metric-click:focus-visible {
+  outline: 2px solid rgba(127, 196, 255, 0.75);
+  outline-offset: 2px;
+}
+.cc-metric-open {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  padding: 1px 5px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 999px;
+  background: rgba(8, 18, 33, 0.75);
+  color: #8fb8e8;
+  font-size: 6.8px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  opacity: 0.75;
+  transition: opacity 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  pointer-events: none;
+}
+.cc-metric-click:hover .cc-metric-open,
+.cc-metric-click:focus-visible .cc-metric-open {
+  opacity: 1;
+  color: #dbe7f5;
+  border-color: rgba(127, 196, 255, 0.55);
+}
+
+/* Historical view inside the Server Statistics drawer. */
+.cc-history { display: flex; flex-direction: column; gap: 9px; }
+.cc-history-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cc-history-back {
+  padding: 4px 9px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 7px;
+  background: rgba(8, 18, 33, 0.62);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 8.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+.cc-history-back:hover {
+  color: #fff;
+  border-color: rgba(127, 196, 255, 0.5);
+  background: rgba(47, 155, 255, 0.12);
+}
+.cc-history-heading { flex: 1; min-width: 150px; }
+.cc-history-title { color: var(--ink); font-size: 12.5px; font-weight: 800; letter-spacing: 0.2px; }
+.cc-history-sub { margin-top: 2px; color: var(--muted); font-size: 8.5px; }
+
+.cc-history-ranges {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 9px;
+  background: rgba(8, 18, 33, 0.6);
+}
+.cc-history-range {
+  min-width: 34px;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+.cc-history-range:hover { color: var(--ink); background: rgba(47, 155, 255, 0.1); }
+.cc-history-range.active {
+  background: linear-gradient(135deg, rgba(47, 155, 255, 0.92), rgba(34, 211, 238, 0.78));
+  color: #041020;
+  box-shadow: 0 6px 18px -10px rgba(47, 155, 255, 0.9);
+}
+
+.cc-history-tabs { display: flex; flex-wrap: wrap; gap: 5px; }
+.cc-history-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid rgba(96, 165, 250, 0.15);
+  border-radius: 999px;
+  background: rgba(8, 18, 33, 0.5);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 8.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+.cc-history-tab i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
+.cc-history-tab:hover { color: var(--ink); border-color: rgba(127, 196, 255, 0.35); }
+.cc-history-tab.active {
+  color: var(--ink);
+  border-color: rgba(127, 196, 255, 0.5);
+  background: rgba(47, 155, 255, 0.14);
+  box-shadow: 0 0 20px -10px rgba(47, 155, 255, 0.9);
+}
+
+.cc-history-panel { padding: 11px 12px 9px; overflow: visible; }
+.cc-history-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.cc-history-panel-title { color: var(--ink); font-size: 10px; font-weight: 800; }
+.cc-history-panel-sub { margin-top: 2px; color: var(--muted); font-size: 8px; }
+.cc-history-stats { display: flex; flex-wrap: wrap; gap: 9px; color: var(--muted); font-size: 8px; }
+.cc-history-stats b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.cc-history-stats .peak b { color: #ff6b62; }
+.cc-history-stats .low b { color: #00d47e; }
+
+.cc-history-plot { position: relative; width: 100%; }
+.cc-history-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+.cc-history-axis-label { fill: #7f8ea6; font-size: 9px; font-family: inherit; }
+
+/* A small entrance animation: the trend draws left-to-right, then the dots and
+   latest-sample beacon settle in. Range and tab switches replay it. */
+.cc-history-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: cc-history-draw 1.15s cubic-bezier(0.33, 0, 0.2, 1) forwards;
+}
+.cc-history-area { opacity: 0; animation: cc-history-area-in 1.1s ease 0.15s forwards; }
+.cc-history-dots { opacity: 0; animation: cc-history-fade-in 0.7s ease 0.55s forwards; }
+.cc-history-latest { opacity: 0; animation: cc-history-fade-in 0.5s ease 1.1s forwards; }
+.cc-history-latest > circle:first-child {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cc-history-pulse 2.4s ease-out 1.3s infinite;
+}
+
+@keyframes cc-history-draw { to { stroke-dashoffset: 0; } }
+@keyframes cc-history-area-in { to { opacity: 0.12; } }
+@keyframes cc-history-fade-in { to { opacity: 1; } }
+@keyframes cc-history-pulse {
+  0% { transform: scale(0.55); opacity: 0.85; }
+  70%, 100% { transform: scale(1.5); opacity: 0; }
+}
+.cc-history-tip {
+  position: absolute;
+  top: 4px;
+  z-index: 3;
+  min-width: 118px;
+  padding: 6px 8px;
+  border: 1px solid rgba(127, 196, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(5, 12, 23, 0.94);
+  box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.9);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.cc-history-tip-time { margin-bottom: 3px; color: var(--muted); font-size: 7.5px; }
+.cc-history-tip-row { display: flex; align-items: center; gap: 5px; color: var(--ink-2); font-size: 8px; white-space: nowrap; }
+.cc-history-tip-row i { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 2px; }
+.cc-history-tip-row span { flex: 1; }
+.cc-history-tip-row b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.cc-history-legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 7px; color: var(--muted); font-size: 8px; }
+.cc-history-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cc-history-legend i { display: inline-block; width: 8px; height: 3px; border-radius: 2px; }
+.cc-history-legend b { font-variant-numeric: tabular-nums; }
+.cc-history-note { margin-top: 6px; color: #5f7591; font-size: 7.5px; }
+.cc-history-loading,
+.cc-history-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: #5f7591;
+  font-size: 9px;
+}
+
+.cc-cmp-list { display: flex; flex-direction: column; gap: 7px; }
+.cc-cmp-row { min-width: 0; }
+.cc-cmp-top { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 3px; color: var(--ink-2); font-size: 8px; }
+.cc-cmp-top .cc-muted { white-space: nowrap; }
+.cc-cmp-legend { margin-top: 2px; color: #5f7591; font-size: 7.5px; }
+
+.cc-facts { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0; }
+.cc-facts > div { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--border-soft); font-size: 8.2px; }
+.cc-facts > div:last-child { border-bottom: 0; }
+.cc-facts dt { margin: 0; color: var(--muted); }
+.cc-facts dd { margin: 0; color: var(--ink); font-weight: 600; text-align: right; }
+
+.cc-modal-health {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid;
+  border-radius: 3px;
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.cc-detail-empty { padding: 16px 8px; color: var(--muted); font-size: 9px; text-align: center; }
+.cc-detail-problems { font-size: 8.6px; }
+.cc-detail-problem-name { max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+
+.cc-modal-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 18px;
+  border-top: 1px solid rgba(27, 52, 81, 0.8);
+  background: rgba(7, 17, 30, 0.9);
+  color: #5f7591;
+  font-size: 8px;
+}
+
+.cc-detail-note { flex: 1; min-width: 200px; }
+.cc-detail-note.error { color: #ffb3bf; }
+.cc-detail-note.partial { color: var(--amber); }
+.cc-modal-link { color: #7fc4ff; text-decoration: none; font-weight: 700; white-space: nowrap; }
+.cc-modal-link:hover { color: #fff; }
+
+/* \u2500\u2500 Freshness (kept for the inventory page) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+.cc-freshness-body { display: flex; flex-direction: column; align-items: center; padding: 7px 8px 8px; }
+.cc-freshness .cc-donut { width: 108px; height: 108px; }
+.cc-freshness-legend { width: 100%; margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+.cc-freshness-legend .cc-legend-row { font-size: 8px; }
+
+.cc-donut { position: relative; width: 88px; height: 88px; flex: 0 0 auto; }
+.cc-donut svg { width: 100%; height: 100%; display: block; }
+.cc-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.cc-donut-value { font-size: 17px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.cc-donut-unit { margin-top: 2px; color: var(--muted); font-size: 7.5px; }
+
+.cc-bars { display: flex; align-items: flex-end; gap: 2px; height: 52px; flex: 1; min-width: 34px; }
+.cc-bar { flex: 1; min-width: 2px; border-radius: 1px 1px 0 0; opacity: 0.9; }
+
+/* \u2500\u2500 Motion \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+@keyframes cc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes cc-live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 212, 126, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(0, 212, 126, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 212, 126, 0); }
+}
+@keyframes cc-live-pulse-amber {
+  0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(255, 193, 7, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+@keyframes cc-live-pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(255, 77, 103, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(255, 77, 103, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 77, 103, 0); }
+}
+@keyframes cc-title-shine { to { background-position: -220% 0; } }
+@keyframes cc-marquee { to { transform: translateX(-50%); } }
+@keyframes cc-gauge-draw { from { stroke-dasharray: 0 100; } }
+@keyframes cc-spark-draw { to { stroke-dashoffset: 0; } }
+@keyframes cc-usage-grow { from { transform: scaleX(0); } }
+@keyframes cc-cell-ring {
+  0%, 100% { opacity: 0; }
+  45% { opacity: 1; }
+}
+@keyframes cc-modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes cc-drift-a { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(70px, 50px, 0) scale(1.05); } }
+@keyframes cc-drift-b { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(-70px, 50px, 0) scale(0.95); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-app,
+  .cc-app *,
+  .cc-app *::before,
+  .cc-app *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* \u2500\u2500 Readability pass \u2014 match the Magic UI concept build \u2500\u2500\u2500\u2500\u2500\u2500\u2500
+   The first port kept the dense wall-display type sizes. The
+   concept build later raised type, spacing and control sizes;
+   these overrides bring the plugin to the same scale. */
+
+.cc-eyebrow { font-size: 9.5px; }
+.cc-title { font-size: clamp(22px, 1.75vw, 28px); }
+.cc-subtitle { font-size: 12px; }
+
+.cc-clock-date { font-size: 10.5px; }
+.cc-clock-time { font-size: 23px; }
+.cc-clock-zone { font-size: 10px; }
+
+.cc-mode button { font-size: 11px; }
+.cc-zabbix-label { font-size: 13px; }
+.cc-zabbix-sub { font-size: 9.5px; }
+.cc-sample-badge { font-size: 9px; }
+.cc-banner { font-size: 11px; }
+.cc-banner-btn { font-size: 10px; }
+
+.cc-kpis { gap: 10px; margin-bottom: 14px; }
+.cc-kpi { gap: 11px; min-height: 112px; padding: 15px 14px; }
+.cc-kpi-icon { width: 32px; height: 32px; border-radius: 9px; }
+.cc-kpi-label { font-size: 9.5px; letter-spacing: 0.06em; }
+.cc-kpi-value { font-size: clamp(23px, 1.75vw, 27px); }
+.cc-kpi-sub {
+  overflow: visible;
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+}
+.cc-kpi-delta { font-size: 9px; }
+.cc-kpi-link::before { font-size: 13px; }
+
+.cc-panel { padding: 15px 16px; }
+.cc-panel-title { font-size: 13.5px; }
+.cc-panel-sub { margin-top: 3px; font-size: 10.5px; }
+
+.cc-util-row { gap: 12px; margin-bottom: 14px; }
+.cc-util-body { gap: 16px; margin-top: 13px; }
+.cc-ring { width: 92px; height: 92px; }
+.cc-ring::before { inset: 9px; }
+.cc-ring-inner strong { font-size: 18px; }
+.cc-ring-inner span { font-size: 8.5px; }
+.cc-stackbar { height: 9px; }
+.cc-legend { gap: 5px; margin-top: 10px; }
+.cc-legend-row { grid-template-columns: 8px 1fr auto; gap: 7px; font-size: 9.5px; }
+.cc-dot { width: 7px; height: 7px; }
+
+.cc-groups { gap: 12px; margin-bottom: 14px; }
+.cc-group { padding: 14px 16px; }
+.cc-group-head { margin-bottom: 6px; }
+.cc-group-name { gap: 8px; font-size: 12.5px; }
+.cc-group-total { font-size: 10px; }
+.cc-group-legend { gap: 4px 11px; font-size: 9.5px; }
+.cc-lg i { width: 6px; height: 6px; }
+.cc-tier-row { grid-template-columns: 98px minmax(0, 1fr); gap: 10px; padding: 9px 0; }
+.cc-tier-title { font-size: 11.5px; }
+.cc-tier-sub { font-size: 9.5px; }
+.cc-tier-counts span { font-size: 9.5px; }
+.cc-host-grid { gap: 2.5px; }
+.cc-cell { width: 7px; height: 7px; border-radius: 2px; }
+.cc-legend-inline { font-size: 9.5px; }
+
+.cc-bottom { gap: 12px; margin-bottom: 14px; }
+.cc-table { margin-top: 11px; font-size: 11.5px; }
+.cc-table th { padding-bottom: 7px; font-size: 9px; }
+.cc-table td { padding: 7px 7px 7px 0; }
+.cc-tabs { padding: 3px; border-radius: 8px; margin-top: 10px; }
+.cc-tab { padding: 5px 10px; border-radius: 6px; font-size: 10px; }
+.cc-status { font-size: 9.5px; }
+.cc-row-arrow { font-size: 12px; }
+
+.cc-problem-tabs { padding: 8px 0 10px; }
+.cc-problem-table { min-width: 1460px; font-size: 10.5px; }
+.cc-problem-table td { padding: 8px 9px 8px 0; }
+.cc-problem-table thead th { padding-bottom: 7px; font-size: 9px; }
+.cc-sev { font-size: 9.5px; }
+.cc-footer { padding-top: 12px; font-size: 9.5px; }
+
+.cc-modal-kicker { font-size: 10.5px; letter-spacing: 0.14em; }
+.cc-modal-source { font-size: 9.5px; }
+.cc-modal-sub { font-size: 11.5px; }
+.cc-modal-close { font-size: 22px; }
+.cc-gauge-center strong { font-size: 24px; }
+.cc-gauge-center span { font-size: 10px; }
+.cc-metric-name { font-size: 9.5px; }
+.cc-metric-band { font-size: 8.5px; }
+.cc-metric-fleet { font-size: 9px; }
+.cc-metric-foot { font-size: 8.5px; }
+.cc-detail-spark-empty { font-size: 9px; }
+.cc-fs-mount { font-size: 9.5px; }
+.cc-fs-value { font-size: 9.5px; }
+.cc-fs-legend { font-size: 8.5px; }
+.cc-cmp-top { font-size: 9px; }
+.cc-cmp-legend { font-size: 8.5px; }
+.cc-facts > div { font-size: 9.2px; }
+.cc-modal-health { font-size: 8.5px; }
+.cc-detail-empty { font-size: 10px; }
+.cc-detail-problems { font-size: 9.5px; }
+.cc-modal-foot { font-size: 9px; }
+.cc-freshness-legend .cc-legend-row { font-size: 9px; }
+.cc-donut-value { font-size: 18px; }
+.cc-donut-unit { font-size: 8.5px; }
+
+/* \u2500\u2500 Data Center Operation dashboard \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+/* DCO shows eight KPIs (no stale tile), so it gets eight equal columns and
+   fills the row edge to edge. The :where() wrapper keeps this at the same
+   specificity as the base .cc-kpis rule so the responsive column counts
+   defined later still win. */
+:where(.cc-dc) .cc-kpis {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+/* Production, Disaster Recovery and Servers in Maintenance share one row:
+   the two Infrastructure group panels on the left, the maintenance list on
+   the right. All three stretch to the row height. */
+.cc-dc-envs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* The maintenance list is capped by the environment panels, not by its own
+   length: size containment keeps a long list from making the row taller. */
+.cc-dc-envs > .cc-panel:not(.cc-group) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  contain: size;
+}
+
+.cc-maintenance-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 520px;
+  overflow: auto;
+  margin-top: 9px;
+  border-radius: 8px;
+}
+
+.cc-maintenance-scroll .cc-table-wrap { overflow: visible; }
+
+.cc-dc-envs .cc-maintenance-table .cc-col-secondary { display: none; }
+
+.cc-maintenance-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0a1526;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.cc-maintenance-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--cyan);
+  white-space: nowrap;
+}
+
+.cc-maintenance-state i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.7);
+}
+
+/* \u2500\u2500 Responsive \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+
+@media (max-width: 1500px) {
+  .cc-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .cc-bottom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1400px) {
+  .cc-title { white-space: normal; }
+  .cc-header-filters { order: 3; flex: 1 1 100%; max-width: none; margin-top: 2px; }
+}
+
+@media (max-width: 1200px) {
+  .cc-util-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cc-groups { grid-template-columns: 1fr; }
+  .cc-dc-envs { grid-template-columns: 1fr; }
+  /* Stacked, the maintenance panel sets its own height again. */
+  .cc-dc-envs > .cc-panel:not(.cc-group) { contain: none; }
+  .cc-maintenance-scroll { max-height: 360px; }
+  .cc-header-right { margin-left: 0; }
+
+}
+
+@media (max-width: 1000px) {
+  .cc-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cc-detail-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .cc-filter-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .cc-app { padding: 10px; }
+  .cc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cc-util-row, .cc-bottom { grid-template-columns: 1fr; }
+  .cc-title { font-size: 18px; }
+  .cc-subtitle { white-space: normal; }
+  .cc-header-filters { order: 0; flex: 0 0 auto; width: 100%; margin-top: 0; }
+}
+
+@media (max-width: 620px) {
+  .cc-ticker-label { display: none; }
+  .cc-modal-backdrop { padding: 0; }
+  .cc-modal { max-height: 100vh; border-radius: 0; border-left: 0; border-right: 0; }
+  .cc-modal-head, .cc-modal-body, .cc-modal-foot { padding-left: 12px; padding-right: 12px; }
+  .cc-modal-title { font-size: 18px; }
+  .cc-fs-mount { width: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-ticker-track,
+  .cc-modal-beam,
+  .cc-modal-aurora,
+  .cc-title,
+  .cc-srv-title,
+  .cc-modal-title,
+  .cc-gauge-fill,
+  .cc-usage-track > span { animation: none; }
+  .cc-spark-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+  .cc-history-line { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+  .cc-history-area { animation: none; opacity: 0.12; }
+  .cc-history-dots,
+  .cc-history-latest { animation: none; opacity: 1; }
+  .cc-history-latest > circle:first-child { animation: none; opacity: 0.35; }
+}
+`;
+
+      const ESTATE_FROZEN_MINUTES = 15;
+      let estateAnchorClock = 0;
+      let estateAnchorAt = 0;
+      let estateFrozen = false;
+      function zabbixReferenceNow(items) {
+        let newest = 0;
+        for (const item of items) {
+          const clock = parseInt(item.lastclock || "0", 10) || 0;
+          if (clock > newest) {
+            newest = clock;
+          }
+        }
+        if (newest <= 0) {
+          return Math.floor(Date.now() / 1e3);
+        }
+        const mono = typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+        if (newest > estateAnchorClock) {
+          estateAnchorClock = newest;
+          estateAnchorAt = mono;
+          estateFrozen = false;
+        } else if (estateAnchorAt > 0 && (mono - estateAnchorAt) / 6e4 > ESTATE_FROZEN_MINUTES) {
+          estateFrozen = true;
+        }
+        return newest;
+      }
       const SEVERITY_GROUP = {
         0: "Info",
         1: "Info",
@@ -1645,12 +4827,18 @@ System.register(['react', '@grafana/data'], (function (exports) {
         4: "High",
         5: "Critical"
       };
-      function pad(n) {
-        return n < 10 ? `0${n}` : String(n);
-      }
       function timeLabel(clockSec) {
-        const d = new Date(clockSec * 1e3);
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const parts = new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Asia/Singapore",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        }).formatToParts(new Date(clockSec * 1e3));
+        const get = (type) => parts.find((p) => p.type === type)?.value || "";
+        return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
       }
       function durationLabel(minutes) {
         const m = Math.max(1, Math.round(minutes));
@@ -1700,8 +4888,12 @@ System.register(['react', '@grafana/data'], (function (exports) {
         }
         return "Tier 3";
       }
+      const IBM_I_PATTERN = /ibm\s*i\b|as\/?400|os\/?400|i5\/os|iseries/i;
       function osFromInventory(host) {
         const text = `${host.inventory?.os || ""} ${host.inventory?.os_full || ""}`;
+        if (IBM_I_PATTERN.test(text)) {
+          return "IBM i";
+        }
         if (/windows/i.test(text)) {
           return "Windows";
         }
@@ -1713,6 +4905,23 @@ System.register(['react', '@grafana/data'], (function (exports) {
         }
         return "Linux";
       }
+      function osFromItems(items) {
+        if (items.some((item) => /^as400\./i.test(item.key_))) {
+          return "IBM i";
+        }
+        const uname = items.find((item) => item.key_ === "system.uname");
+        if (uname && IBM_I_PATTERN.test(uname.lastvalue || "")) {
+          return "IBM i";
+        }
+        return null;
+      }
+      function isAggregateProcCpu(key) {
+        if (!/^proc\.cpu\.util\[/i.test(key)) {
+          return false;
+        }
+        const args = key.slice(key.indexOf("[") + 1, -1).split(",");
+        return (args[0] || "").trim() === "" && args.some((arg) => arg.trim().toLowerCase() === "total");
+      }
       function numeric(value) {
         if (value === void 0 || value === null || value === "") {
           return null;
@@ -1720,7 +4929,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const n = parseFloat(value);
         return Number.isFinite(n) ? n : null;
       }
-      function metricForHost(items) {
+      function metricForHost(items, nowSec) {
         let cpu = null;
         let memory = null;
         let disk = null;
@@ -1731,6 +4940,14 @@ System.register(['react', '@grafana/data'], (function (exports) {
         let memItem;
         let diskItem;
         let lastClock = 0;
+        let aggregateCpu = null;
+        let aggregateCpuItem;
+        let cpuFallbackSum = 0;
+        let cpuFallbackCount = 0;
+        let cpuFallbackItem;
+        let memAvailable = null;
+        let memFree = null;
+        let memTotal = null;
         for (const item of items) {
           const key = item.key_ || "";
           const value = numeric(item.lastvalue);
@@ -1744,26 +4961,58 @@ System.register(['react', '@grafana/data'], (function (exports) {
           if (key === "system.cpu.util") {
             cpu = value;
             cpuItem = item.itemid;
+          } else if (isAggregateProcCpu(key)) {
+            if (aggregateCpu === null) {
+              aggregateCpu = value;
+              aggregateCpuItem = item.itemid;
+            }
+          } else if (/hrProcessorLoad/i.test(key)) {
+            cpuFallbackSum += value;
+            cpuFallbackCount += 1;
+            cpuFallbackItem = item.itemid;
           } else if (key === "vm.memory.util" || key === "vm.memory.utilization") {
             memory = value;
             memItem = item.itemid;
           } else if (key === "vm.memory.size[pavailable]" && memory === null) {
             memory = Math.max(0, 100 - value);
             memItem = item.itemid;
-          } else if (/^vfs\.fs\.(dependent\.)?size\[[^\]]*pused\]$/.test(key)) {
+          } else if (key === "vm.memory.size[pfree]" && memory === null) {
+            memory = Math.max(0, 100 - value);
+            memItem = item.itemid;
+          } else if (key === "vm.memory.size[available]") {
+            memAvailable = value;
+          } else if (key === "vm.memory.size[free]") {
+            memFree = value;
+          } else if (key === "vm.memory.size[total]") {
+            memTotal = value;
+          } else if (/^vfs\.fs\.(dependent\.)?size\[[^\]]*pused[^\]]*\]$/i.test(key) || /^as400\.disk\.size\[[^\]]*pused[^\]]*\]$/i.test(key)) {
             if (disk === null || value > disk) {
               disk = value;
               diskItem = item.itemid;
             }
-          } else if (/^net\.if\.in\[[^\]]*\]$/.test(key) && !/errors|dropped|collisions/i.test(key)) {
+          } else if ((/^net\.if\.in\[[^\]]*\]$/i.test(key) || /^if(HC)?InOctets\[/i.test(key) && /bps/i.test(item.units || "")) && !/errors|dropped|collisions/i.test(key)) {
             netIn += value;
             sawNet = true;
-          } else if (/^net\.if\.out\[[^\]]*\]$/.test(key) && !/errors|dropped|collisions/i.test(key)) {
+          } else if ((/^net\.if\.out\[[^\]]*\]$/i.test(key) || /^if(HC)?OutOctets\[/i.test(key) && /bps/i.test(item.units || "")) && !/errors|dropped|collisions/i.test(key)) {
             netOut += value;
             sawNet = true;
           }
         }
-        const lastSeenMin = lastClock > 0 ? Math.max(0, Math.round((Date.now() / 1e3 - lastClock) / 60)) : 9999;
+        if (cpu === null && aggregateCpu !== null) {
+          cpu = aggregateCpu;
+          cpuItem = aggregateCpuItem;
+        } else if (cpu === null && cpuFallbackCount > 0) {
+          cpu = cpuFallbackSum / cpuFallbackCount;
+          cpuItem = cpuFallbackItem;
+        }
+        if (memory === null && memTotal !== null && memTotal > 0) {
+          if (memAvailable !== null) {
+            memory = Math.max(0, 100 - memAvailable / memTotal * 100);
+          } else if (memFree !== null) {
+            memory = Math.max(0, 100 - memFree / memTotal * 100);
+          }
+        }
+        const lastSeenMin = lastClock > 0 ? Math.max(0, Math.round((nowSec - lastClock) / 60)) : 9999;
         const network = sawNet ? Math.min(100, (netIn + netOut) / 1e9 * 100) : 0;
         return {
           cpu: Math.round(cpu ?? 0),
@@ -1844,6 +5093,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           rpc("maintenance.get", { output: "extend", selectHosts: ["hostid"] }),
           versionPromise
         ]);
+        const now = zabbixReferenceNow(itemsRaw);
         const itemsByHost = /* @__PURE__ */ new Map();
         for (const item of itemsRaw) {
           const list = itemsByHost.get(item.hostid) || [];
@@ -1868,9 +5118,14 @@ System.register(['react', '@grafana/data'], (function (exports) {
             }
           }
         }
+        const metricsByHost = /* @__PURE__ */ new Map();
+        for (const zh of hostsRaw) {
+          metricsByHost.set(zh.hostid, metricForHost(itemsByHost.get(zh.hostid) || [], now));
+        }
         const hosts = hostsRaw.map((zh, index) => {
           const groups = (zh.groups || []).map((g) => g.name);
-          const metrics = metricForHost(itemsByHost.get(zh.hostid) || []);
+          const hostItems = itemsByHost.get(zh.hostid) || [];
+          const metrics = metricsByHost.get(zh.hostid) || metricForHost(hostItems, now);
           const maintenance = zh.maintenance_status === "1" || maintenanceHostIds.has(zh.hostid);
           const unavailable = zh.available === "2" || (zh.interfaces || []).some((i) => i.available === "2");
           const severityNum = maxSeverityByHost.get(zh.hostid) || 0;
@@ -1879,7 +5134,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
           let dataState = "upToDate";
           if (!metrics.hasItems) {
             dataState = "notMonitored";
-          } else if (metrics.lastSeenMin > 10) {
+          } else if (estateFrozen || metrics.lastSeenMin > 10) {
             dataState = "noData";
           } else if (metrics.lastSeenMin > 5) {
             dataState = "stale";
@@ -1891,7 +5146,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
             environment: normalizeEnvironment(tagValue(zh.tags, ["environment", "env"]), groups),
             hostGroup: groups[0] || "Ungrouped",
             tier: normalizeTier(tagValue(zh.tags, ["tier", "system_tier", "system tier"])),
-            os: osFromInventory(zh),
+            os: osFromItems(hostItems) || osFromInventory(zh),
             businessService: tagValue(zh.tags, ["business_service", "business service", "service"]) || "Unassigned",
             health,
             connectivity: unavailable ? "unavailable" : "available",
@@ -1908,7 +5163,6 @@ System.register(['react', '@grafana/data'], (function (exports) {
           };
         });
         const hostByHostname = new Map(hosts.map((h) => [h.hostname, h]));
-        const now = Date.now() / 1e3;
         const problems = problemsRaw.map((zp, index) => {
           const trigger = triggerById.get(zp.objectid);
           const zhost = trigger?.hosts?.[0]?.host || "unknown";
@@ -1959,7 +5213,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const topSorted = hosts.slice().sort((a, b) => b.cpu - a.cpu || b.memory - a.memory || b.disk - a.disk).slice(0, 10);
         const metricItemByHost = /* @__PURE__ */ new Map();
         for (const zh of hostsRaw) {
-          metricItemByHost.set(zh.host, metricForHost(itemsByHost.get(zh.hostid) || []).itemIds);
+          metricItemByHost.set(zh.host, metricsByHost.get(zh.hostid)?.itemIds || {});
         }
         const historyIds = /* @__PURE__ */ new Set();
         for (const row of topSorted) {
@@ -2033,455 +5287,41 @@ System.register(['react', '@grafana/data'], (function (exports) {
         return {
           data,
           version: version || "Unknown",
-          fetchedAt: /* @__PURE__ */ new Date(),
+          fetchedAt: new Date(now * 1e3),
           transport: config.transport
         };
       }
 
-      const CSS = `
-.cc-app {
-  min-height: 100vh;
-  margin: 0;
-  padding: 14px 16px 26px;
-  background:
-    radial-gradient(1200px 500px at 15% -10%, rgba(20, 70, 140, 0.20), transparent 60%),
-    radial-gradient(900px 400px at 85% -5%, rgba(0, 120, 90, 0.10), transparent 60%),
-    #050a13;
-  color: #dbe7f5;
-  font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 12px;
-  -webkit-font-smoothing: antialiased;
-}
-.cc-app * { box-sizing: border-box; }
-.cc-app select { font-family: inherit; }
+      const LEGACY_KEYS = ["opsbeacon-live-snapshot-v1", "opsbeacon-live-fetch-lock-v1"];
+      function clearLegacyCache() {
+        if (typeof window === "undefined") {
+          return;
+        }
+        try {
+          for (const key of LEGACY_KEYS) {
+            window.localStorage.removeItem(key);
+          }
+        } catch (err) {
+        }
+      }
+      clearLegacyCache();
+      async function fetchLiveData() {
+        return fetchZabbixData();
+      }
 
-.cc-header { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 13px; }
-.cc-brand { display: flex; gap: 12px; align-items: center; min-width: 330px; }
-.cc-logo { display: flex; gap: 3px; align-items: stretch; height: 38px; }
-.cc-logo span { display: block; width: 9px; border-radius: 2px; }
-.cc-title { font-size: 26px; font-weight: 800; letter-spacing: 0.4px; line-height: 0.95; white-space: nowrap; }
-.cc-subtitle { font-size: 10.5px; color: #8ea3bf; margin-top: 6px; letter-spacing: 0.2px; white-space: nowrap; }
-.cc-filters { display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-end; flex: 1; }
-.cc-filter { min-width: 104px; }
-.cc-filter label { display: block; font-size: 8px; text-transform: uppercase; letter-spacing: 0.7px; color: #7f95b2; margin-bottom: 3px; }
-.cc-filter select {
-  width: 100%; background: #0b1627; border: 1px solid #203554; color: #dbe7f5;
-  border-radius: 5px; padding: 5px 7px; font-size: 10.5px; outline: none; cursor: pointer;
-}
-.cc-filter select:focus { border-color: #2b6ca3; box-shadow: 0 0 0 2px rgba(43, 108, 163, 0.18); }
-.cc-header-right { display: flex; gap: 10px; margin-left: auto; align-items: stretch; }
-.cc-clock { text-align: right; padding: 2px 4px; }
-.cc-clock-date { font-size: 10px; color: #8ea3bf; }
-.cc-clock-time { font-size: 21px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
-.cc-clock-zone { font-size: 8.5px; color: #7f95b2; }
-.cc-zabbix {
-  display: flex; align-items: center; gap: 9px; min-width: 158px;
-  background: linear-gradient(180deg, rgba(9, 34, 25, 0.82), rgba(6, 20, 16, 0.82));
-  border: 1px solid #1c4a36; border-radius: 8px; padding: 7px 10px;
-}
-.cc-zabbix-dot { width: 8px; height: 8px; border-radius: 50%; background: #00e676; box-shadow: 0 0 10px rgba(0, 230, 118, 0.9); flex: 0 0 auto; }
-.cc-zabbix-label { font-size: 12px; font-weight: 800; letter-spacing: 0.6px; color: #9ff3c5; }
-.cc-zabbix-sub { font-size: 8.5px; color: #6fbf94; margin-top: 1px; }
-.cc-sample-badge {
-  font-size: 7.5px; font-weight: 800; letter-spacing: 0.6px; color: #ffc107;
-  border: 1px solid #5b4a14; background: rgba(255, 193, 7, 0.08); border-radius: 3px;
-  padding: 1px 4px; margin-left: auto;
-}
-.cc-sample-badge.is-live { color: #00e676; border-color: #1c4a36; background: rgba(0, 230, 118, 0.08); }
-.cc-sample-badge.is-error { color: #ff4d67; border-color: #5b1c26; background: rgba(255, 77, 103, 0.08); }
-.cc-zabbix.is-error {
-  border-color: #5b1c26;
-  background: linear-gradient(180deg, rgba(52, 10, 16, 0.82), rgba(26, 6, 9, 0.82));
-}
-.cc-zabbix.is-error .cc-zabbix-dot { background: #ff4d67; box-shadow: 0 0 10px rgba(255, 77, 103, 0.9); }
-.cc-zabbix.is-loading .cc-zabbix-dot { background: #ffc107; box-shadow: 0 0 10px rgba(255, 193, 7, 0.9); animation: cc-pulse 1s infinite; }
-.cc-zabbix.is-sample .cc-zabbix-dot { background: #ffc107; box-shadow: 0 0 8px rgba(255, 193, 7, 0.55); }
-@keyframes cc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-.cc-mode { display: flex; align-self: center; border: 1px solid #1c314e; border-radius: 6px; overflow: hidden; }
-.cc-mode button {
-  background: #0b1728; color: #8ea3bf; border: 0; padding: 5px 9px;
-  font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; cursor: pointer; font-family: inherit;
-}
-.cc-mode button:hover { color: #fff; }
-.cc-mode button.active { background: #16324f; color: #fff; }
-.cc-mode .cc-mode-note {
-  padding: 5px 9px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px;
-  background: #16324f; color: #dfe9f6; white-space: nowrap;
-}
-.cc-banner {
-  display: flex; gap: 8px; align-items: center; margin: 0 0 9px; padding: 7px 10px;
-  border: 1px solid #5b1c26; border-radius: 6px; background: rgba(255, 61, 87, 0.08);
-  color: #ffb3bf; font-size: 10px;
-}
-.cc-banner strong { color: #ff4d67; font-weight: 800; }
-.cc-banner.warn { border-color: #5b4a14; background: rgba(255, 193, 7, 0.08); color: #ffe08a; }
-.cc-banner.warn strong { color: #ffc107; }
-.cc-banner-btn {
-  margin-left: auto; appearance: none; cursor: pointer; font-family: inherit;
-  font-size: 9px; font-weight: 700; color: #ffe08a; background: rgba(255, 193, 7, 0.12);
-  border: 1px solid #5b4a14; border-radius: 4px; padding: 4px 9px; white-space: nowrap;
-}
-.cc-banner-btn:hover { background: rgba(255, 193, 7, 0.2); }
-
-.cc-kpis { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; margin-bottom: 9px; }
-.cc-kpi {
-  position: relative; display: flex; gap: 8px; align-items: center;
-  background: linear-gradient(180deg, #0a1526, #07101d);
-  border: 1px solid #1a2c48; border-radius: 8px; padding: 8px 9px; min-height: 59px;
-  overflow: hidden;
-}
-.cc-kpi::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-  background: var(--tone); box-shadow: 0 0 12px var(--tone);
-}
-.cc-kpi-icon {
-  width: 27px; height: 27px; border-radius: 5px; display: flex; align-items: center; justify-content: center;
-  background: var(--tone-bg); color: var(--tone); flex: 0 0 auto;
-}
-.cc-kpi-body { min-width: 0; }
-.cc-kpi-label { font-size: 7.8px; text-transform: uppercase; letter-spacing: 0.6px; color: #8ea3bf; white-space: nowrap; }
-.cc-kpi-value { font-size: 21px; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; letter-spacing: 0.2px; }
-.cc-kpi-sub { font-size: 8.5px; color: #7f95b2; margin-top: 1px; white-space: nowrap; }
-.cc-kpi-delta { font-size: 8px; font-weight: 700; margin-left: 3px; }
-.cc-delta-up { color: #ff8a3d; }
-.cc-delta-down { color: #00d47e; }
-.cc-kpi-link {
-  color: inherit; text-decoration: none; cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
-}
-.cc-kpi-link:hover {
-  border-color: #2f6ea8;
-  background: linear-gradient(180deg, #0d1d33, #081422);
-  box-shadow: 0 0 0 1px rgba(47, 155, 255, 0.18), 0 4px 14px rgba(0, 0, 0, 0.35);
-}
-.cc-kpi-link:focus-visible { outline: 2px solid #2f9bff; outline-offset: 1px; }
-.cc-kpi-link::after {
-  content: "\u203A"; position: absolute; top: 3px; right: 7px;
-  font-size: 12px; line-height: 1; color: #5f83ad; opacity: 0.6;
-}
-.cc-kpi-link:hover::after { color: #9cc9ff; opacity: 1; }
-
-.cc-util-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 9px; }
-.cc-panel {
-  background: linear-gradient(180deg, #091426, #060e19);
-  border: 1px solid #182a44; border-radius: 9px; overflow: hidden;
-  min-width: 0;
-}
-.cc-panel-head {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  padding: 7px 10px; border-bottom: 1px solid #14253c;
-  background: linear-gradient(90deg, rgba(20, 40, 70, 0.35), transparent);
-}
-.cc-panel-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.45px; text-transform: uppercase; white-space: nowrap; }
-.cc-panel-sub { font-size: 8.5px; color: #6f86a3; white-space: nowrap; }
-
-.cc-util-body { display: flex; gap: 8px; padding: 8px 10px 9px; align-items: center; }
-.cc-donut { position: relative; width: 88px; height: 88px; flex: 0 0 auto; }
-.cc-donut svg { width: 100%; height: 100%; display: block; }
-.cc-donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.cc-donut-value { font-size: 17px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-.cc-donut-unit { font-size: 7.5px; color: #8ea3bf; margin-top: 2px; }
-.cc-bars { display: flex; align-items: flex-end; gap: 2px; height: 52px; flex: 1; min-width: 34px; }
-.cc-bar { flex: 1; min-width: 2px; border-radius: 1px 1px 0 0; opacity: 0.9; }
-.cc-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.cc-legend-row { display: flex; align-items: center; gap: 5px; font-size: 8.5px; color: #9db0c9; }
-.cc-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
-.cc-legend-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cc-legend-value { font-weight: 700; color: #dbe7f5; font-variant-numeric: tabular-nums; }
-
-.cc-groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-bottom: 9px; }
-.cc-group { border-top: 2px solid var(--group); }
-.cc-group-head { display: flex; align-items: center; gap: 8px; padding: 7px 10px 6px; }
-.cc-group-name { font-size: 12.5px; font-weight: 800; letter-spacing: 0.45px; white-space: nowrap; }
-.cc-group-total { font-size: 9.5px; color: #8ea3bf; }
-.cc-group-chips { display: flex; gap: 5px; margin-left: auto; }
-.cc-chip {
-  display: inline-flex; align-items: center; gap: 3px; font-size: 8.5px; font-weight: 700;
-  padding: 2px 5px; border-radius: 4px; background: #0c1a2c; border: 1px solid #1c314e;
-  font-variant-numeric: tabular-nums; white-space: nowrap;
-}
-.cc-chip-green { color: #00e676; }
-.cc-chip-yellow { color: #ffc107; }
-.cc-chip-red { color: #ff4d67; }
-.cc-chip-gray { color: #8ea3bf; }
-.cc-grid-wrap { padding: 6px 10px 7px; }
-.cc-tier-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
-.cc-tier-label { width: 104px; flex: 0 0 auto; }
-.cc-tier-title { font-size: 9.5px; font-weight: 700; white-space: nowrap; }
-.cc-tier-sub { font-size: 8px; color: #6f86a3; white-space: nowrap; }
-.cc-tier-counts { display: flex; gap: 4px; margin-top: 2px; }
-.cc-tier-counts span { font-size: 7.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.cc-host-grid { display: flex; flex-wrap: wrap; gap: 2px; flex: 1; align-content: flex-start; min-height: 10px; }
-.cc-cell { width: 8px; height: 8px; border-radius: 1.5px; opacity: 0.96; }
-.cc-cell:hover { outline: 1px solid #fff; }
-.cc-cell-btn {
-  appearance: none; border: 0; padding: 0; font: inherit; cursor: pointer;
-  transition: transform 0.1s ease;
-}
-.cc-cell-btn:hover { transform: scale(1.45); position: relative; z-index: 2; }
-.cc-cell-btn:focus-visible { outline: 2px solid #fff; outline-offset: 1px; position: relative; z-index: 3; }
-.cc-cell-healthy { background: #00d47e; }
-.cc-cell-warning { background: #ffc107; }
-.cc-cell-critical { background: #ff3d57; }
-.cc-cell-stale { background: #67768a; }
-.cc-cell-maintenance { background: #3b82f6; }
-.cc-cell-unavailable { background: #9f1239; }
-.cc-legend-inline {
-  display: flex; flex-wrap: wrap; gap: 9px; padding: 5px 10px 7px;
-  border-top: 1px solid #13243a; font-size: 7.8px; color: #7f95b2;
-}
-.cc-legend-inline span { display: inline-flex; align-items: center; gap: 4px; }
-
-.cc-bottom { display: grid; grid-template-columns: 1.08fr 1.18fr 0.55fr 1.12fr; gap: 9px; margin-bottom: 9px; }
-.cc-table-wrap { overflow-x: auto; }
-.cc-table { width: 100%; border-collapse: collapse; font-size: 9px; }
-.cc-table th {
-  text-align: left; font-size: 7.4px; text-transform: uppercase; letter-spacing: 0.5px;
-  color: #6f86a3; padding: 4px 6px; border-bottom: 1px solid #18304d; white-space: nowrap; font-weight: 700;
-}
-.cc-table td { padding: 4px 6px; border-bottom: 1px solid #101e31; white-space: nowrap; color: #b9c9dd; }
-.cc-table tr:last-child td { border-bottom: 0; }
-.cc-table tr:hover td { background: #0c1a2c; }
-.cc-table tr.cc-row-link { cursor: pointer; }
-.cc-table tr.cc-row-link:hover td { background: #0d2036; }
-.cc-table tr.cc-row-link:focus-visible { outline: 2px solid #2f9bff; outline-offset: -2px; }
-.cc-row-anchor {
-  display: inline-flex; align-items: center; gap: 4px;
-  color: #e6f0fb; text-decoration: none; font-weight: 700;
-}
-.cc-row-anchor:hover { color: #7fc4ff; text-decoration: underline; }
-.cc-row-arrow { color: #5f83ad; font-size: 11px; line-height: 1; }
-.cc-row-link:hover .cc-row-arrow { color: #9cc9ff; }
-.cc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
-.cc-status { font-weight: 800; font-size: 8.5px; }
-.cc-status-critical { color: #ff4d67; }
-.cc-status-high { color: #ff8a3d; }
-.cc-status-warning { color: #ffc107; }
-.cc-status-healthy { color: #00d47e; }
-.cc-muted { color: #6f86a3; }
-.cc-strong { color: #e6f0fb; font-weight: 700; }
-
-.cc-freshness-body { display: flex; flex-direction: column; align-items: center; padding: 7px 8px 8px; }
-.cc-freshness .cc-donut { width: 108px; height: 108px; }
-.cc-freshness-legend { width: 100%; margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
-.cc-freshness-legend .cc-legend-row { font-size: 8px; }
-
-.cc-tabs { display: flex; gap: 4px; padding: 5px 8px; border-bottom: 1px solid #14253c; }
-.cc-tab {
-  font-size: 8.2px; padding: 3px 8px; border-radius: 4px; border: 1px solid #1c314e;
-  background: #0b1728; color: #8ea3bf; cursor: pointer; font-weight: 700;
-}
-.cc-tab:hover { color: #dbe7f5; border-color: #2b5a86; }
-.cc-tab.active { background: #16324f; color: #fff; border-color: #2b5a86; }
-.cc-spark { width: 64px; height: 18px; display: block; }
-.cc-bar-cell { display: flex; align-items: center; gap: 5px; }
-.cc-mini-track { display: inline-block; width: 44px; height: 5px; border-radius: 3px; background: #12233a; overflow: hidden; }
-.cc-mini-fill { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #ffb020, #ff6b35); }
-
-.cc-problems { margin-bottom: 2px; }
-.cc-problem-tabs { display: flex; align-items: center; gap: 5px; padding: 6px 9px; border-bottom: 1px solid #14253c; }
-.cc-problem-tabs .cc-spacer { flex: 1; }
-.cc-problem-table { font-size: 8.8px; }
-.cc-problem-table td { padding: 4px 6px; }
-.cc-sev { font-weight: 800; text-transform: uppercase; font-size: 8px; letter-spacing: 0.2px; }
-.cc-sev-critical { color: #ff4d67; }
-.cc-sev-high { color: #ff8a3d; }
-.cc-sev-warning { color: #ffc107; }
-.cc-sev-info { color: #5fb0ff; }
-.cc-duration { color: #ffc107; font-weight: 700; }
-.cc-sla-within { color: #00e676; font-weight: 700; }
-.cc-sla-risk { color: #ffc107; font-weight: 700; }
-.cc-sla-breach { color: #ff4d67; font-weight: 700; }
-.cc-ack-yes { color: #00d47e; }
-.cc-ack-no { color: #ff4d67; }
-.cc-related { color: #7fc4ff; }
-.cc-footer { display: flex; justify-content: space-between; color: #5f7591; font-size: 8px; padding: 6px 2px 0; }
-
-.cc-modal-backdrop {
-  position: fixed; inset: 0; z-index: 1080; display: flex; align-items: flex-start;
-  justify-content: center; padding: 22px 16px; overflow-y: auto;
-  background: rgba(2, 7, 14, 0.78); backdrop-filter: blur(3px);
-}
-.cc-modal {
-  position: relative; display: flex; flex-direction: column; width: min(1000px, 100%);
-  max-height: calc(100vh - 44px); margin: auto; overflow: hidden;
-  background: linear-gradient(180deg, #0a1628, #060e19);
-  border: 1px solid #274663; border-radius: 11px;
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
-  animation: cc-modal-in 0.15s ease-out;
-}
-@keyframes cc-modal-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.99); }
-  to { opacity: 1; transform: none; }
-}
-.cc-modal-head {
-  display: flex; gap: 16px; justify-content: space-between; align-items: flex-start;
-  padding: 14px 18px 12px; border-bottom: 1px solid #1b3451;
-  background: linear-gradient(90deg, rgba(24, 54, 88, 0.45), transparent);
-}
-.cc-modal-kicker {
-  display: flex; align-items: center; gap: 8px; font-size: 8px; font-weight: 800;
-  letter-spacing: 1px; color: #7f95b2; text-transform: uppercase;
-}
-.cc-modal-source {
-  font-size: 7.5px; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.6px;
-  border: 1px solid #1c4a36; color: #00e676; background: rgba(0, 230, 118, 0.08);
-}
-.cc-modal-source.sample {
-  color: #ffc107; border-color: #5b4a14; background: rgba(255, 193, 7, 0.08);
-}
-.cc-modal-title {
-  font-size: 23px; font-weight: 800; line-height: 1.1; margin-top: 5px;
-  letter-spacing: 0.2px; word-break: break-word;
-}
-.cc-modal-sub { font-size: 9.5px; color: #8ea3bf; margin-top: 5px; }
-.cc-modal-close {
-  appearance: none; border: 1px solid #24405f; background: #0b1728; color: #9db0c9;
-  width: 30px; height: 30px; border-radius: 6px; font-size: 20px; line-height: 1;
-  cursor: pointer; flex: 0 0 auto; font-family: inherit;
-}
-.cc-modal-close:hover { color: #fff; border-color: #2f6ea8; background: #10233a; }
-.cc-modal-body { overflow-y: auto; padding: 13px 18px 16px; }
-.cc-metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-bottom: 9px; }
-.cc-metric-card {
-  background: linear-gradient(180deg, #0b182b, #07111e); border: 1px solid #1a2c48;
-  border-radius: 8px; padding: 9px 10px 7px; min-width: 0;
-}
-.cc-gauge { position: relative; width: 100%; max-width: 150px; margin: 0 auto; }
-.cc-gauge svg { display: block; width: 100%; height: auto; }
-.cc-gauge-center {
-  position: absolute; left: 0; right: 0; bottom: 2px; text-align: center;
-  display: flex; align-items: baseline; justify-content: center; gap: 2px;
-}
-.cc-gauge-center strong { font-size: 22px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
-.cc-gauge-center span { font-size: 9px; color: #8ea3bf; }
-.cc-metric-info { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-.cc-metric-name { font-size: 8.5px; font-weight: 700; color: #dbe7f5; }
-.cc-metric-band {
-  font-size: 7.5px; font-weight: 800; text-transform: uppercase;
-  letter-spacing: 0.4px; margin-left: auto;
-}
-.cc-metric-fleet { width: 100%; font-size: 8px; color: #7f95b2; }
-.cc-detail-spark { width: 100%; height: 38px; display: block; margin-top: 5px; }
-.cc-detail-spark-empty {
-  height: 38px; display: flex; align-items: center; justify-content: center;
-  font-size: 8px; color: #5f7591; border-top: 1px dashed #14253c; margin-top: 5px;
-}
-.cc-metric-foot { font-size: 7.5px; color: #5f7591; margin-top: 3px; text-align: right; }
-.cc-detail-grid { display: grid; grid-template-columns: 1.08fr 1fr 0.86fr; gap: 9px; margin-bottom: 9px; }
-.cc-detail-panel-body { padding: 8px 10px 9px; }
-.cc-fs-list { display: flex; flex-direction: column; gap: 7px; }
-.cc-fs-row { display: flex; align-items: center; gap: 7px; }
-.cc-fs-mount {
-  width: 52px; flex: 0 0 auto; font-size: 8.5px; color: #b9c9dd;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.cc-fs-value {
-  width: 32px; flex: 0 0 auto; text-align: right; font-size: 8.5px;
-  font-weight: 800; font-variant-numeric: tabular-nums;
-}
-.cc-usage-track { position: relative; flex: 1; height: 7px; border-radius: 4px; background: #12233a; overflow: hidden; }
-.cc-usage-track > span { display: block; height: 100%; border-radius: 4px; }
-.cc-usage-track > i {
-  position: absolute; top: -2px; bottom: -2px; width: 1.5px;
-  background: #dbe7f5; opacity: 0.7;
-}
-.cc-fs-legend { display: flex; gap: 10px; margin-top: 4px; font-size: 7.5px; color: #7f95b2; flex-wrap: wrap; }
-.cc-fs-legend span { display: inline-flex; align-items: center; gap: 4px; }
-.cc-fs-legend i { width: 6px; height: 6px; border-radius: 2px; display: inline-block; }
-.cc-cmp-list { display: flex; flex-direction: column; gap: 7px; }
-.cc-cmp-row { min-width: 0; }
-.cc-cmp-top {
-  display: flex; justify-content: space-between; gap: 6px;
-  font-size: 8px; color: #b9c9dd; margin-bottom: 3px;
-}
-.cc-cmp-top .cc-muted { white-space: nowrap; }
-.cc-cmp-legend { font-size: 7.5px; color: #5f7591; margin-top: 2px; }
-.cc-facts { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0; }
-.cc-facts > div {
-  display: flex; justify-content: space-between; gap: 8px;
-  padding: 3px 0; border-bottom: 1px solid #101e31; font-size: 8.2px;
-}
-.cc-facts > div:last-child { border-bottom: 0; }
-.cc-facts dt { color: #7f95b2; margin: 0; }
-.cc-facts dd { color: #dbe7f5; margin: 0; text-align: right; font-weight: 600; }
-.cc-modal-health {
-  display: inline-block; border: 1px solid; border-radius: 3px; padding: 1px 5px;
-  font-size: 7.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;
-}
-.cc-detail-empty { padding: 16px 8px; text-align: center; font-size: 9px; color: #7f95b2; }
-.cc-detail-problems { font-size: 8.6px; }
-.cc-detail-problem-name { max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
-.cc-modal-foot {
-  display: flex; align-items: center; gap: 12px; justify-content: space-between;
-  padding: 8px 18px; border-top: 1px solid #1b3451; background: #07111e;
-  font-size: 8px; color: #5f7591; flex-wrap: wrap;
-}
-.cc-detail-note { flex: 1; min-width: 200px; }
-.cc-detail-note.error { color: #ffb3bf; }
-.cc-detail-note.partial { color: #ffc107; }
-.cc-modal-link { color: #7fc4ff; text-decoration: none; font-weight: 700; white-space: nowrap; }
-.cc-modal-link:hover { color: #fff; }
-
-@media (max-width: 1000px) {
-  .cc-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cc-detail-grid { grid-template-columns: 1fr; }
-}
-@media (max-width: 620px) {
-  .cc-modal-backdrop { padding: 0; }
-  .cc-modal { max-height: 100vh; border-radius: 0; border-left: 0; border-right: 0; }
-  .cc-modal-head, .cc-modal-body, .cc-modal-foot { padding-left: 12px; padding-right: 12px; }
-  .cc-modal-title { font-size: 18px; }
-  .cc-fs-mount { width: 44px; }
-}
-
-@media (max-width: 1500px) {
-  .cc-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .cc-bottom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 1200px) {
-  .cc-util-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cc-groups { grid-template-columns: 1fr; }
-  .cc-header-right { margin-left: 0; }
-}
-@media (max-width: 760px) {
-  .cc-app { padding: 10px; }
-  .cc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cc-util-row, .cc-bottom { grid-template-columns: 1fr; }
-  .cc-title { font-size: 20px; white-space: normal; }
-  .cc-subtitle { white-space: normal; }
-}
-`;
-
-      const ALL$1 = "All";
-      const ALL_FILTERS$1 = {
-        environment: ALL$1,
-        tier: ALL$1,
-        hostGroup: ALL$1,
-        os: ALL$1,
-        businessService: ALL$1
+      const ALL$2 = "All";
+      const ALL_FILTERS$2 = {
+        environment: ALL$2,
+        tier: ALL$2,
+        hostGroup: ALL$2,
+        os: ALL$2,
+        businessService: ALL$2
       };
       const TIER_SUBTITLE = {
         "Tier 1": "Core Banking",
         "Tier 2": "Business Critical",
         "Tier 3": "Supporting"
       };
-      const fmt = (n) => n.toLocaleString("en-US");
-      const pct = (n) => `${n.toFixed(1)}%`;
-      function initialFilters() {
-        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-        const pick = (key, allowed) => {
-          const value = params ? params.get(key) : null;
-          return value && (!allowed || allowed.includes(value)) ? value : ALL$1;
-        };
-        return {
-          environment: pick("environment", ["PROD", "DR", "UAT"]),
-          tier: pick("tier", ["Tier 1", "Tier 2", "Tier 3"]),
-          hostGroup: pick("hostGroup"),
-          os: pick("os"),
-          businessService: pick("businessService")
-        };
-      }
       function urlRequestedSource() {
         return typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("source") : null;
       }
@@ -2494,11 +5334,13 @@ System.register(['react', '@grafana/data'], (function (exports) {
       function isStaleSampleLink(config) {
         return !!config && !config.sampleDataEnabled && urlRequestedSource() === "sample";
       }
-      function CommandCenterPage({ initialConfig } = {}) {
+      function useOpsData(initialConfig) {
         const sample = useMemo(() => buildSampleData(), []);
         const empty = useMemo(() => emptySampleData(), []);
         const canGoLive = useMemo(() => isGrafanaHosted(), []);
-        const [sampleEnabled, setSampleEnabled] = useState(initialConfig ? initialConfig.sampleDataEnabled : true);
+        const [sampleEnabled, setSampleEnabled] = useState(
+          initialConfig ? initialConfig.sampleDataEnabled : true
+        );
         const [source, setSource] = useState(() => {
           const requested = initialSource(canGoLive);
           const preferred = requested === "live" || initialConfig && initialConfig.defaultSource === "live" ? "live" : requested;
@@ -2512,22 +5354,23 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const [liveState, setLiveState] = useState("idle");
         const [liveError, setLiveError] = useState(null);
         const [liveTick, setLiveTick] = useState(0);
+        const liveRef = useRef(null);
+        const fetchingRef = useRef(false);
         const [refreshSeconds, setRefreshSeconds] = useState(
           initialConfig ? initialConfig.refreshSeconds : DEFAULT_ZABBIX_CONFIG.refreshSeconds
         );
+        const [brandName, setBrandName] = useState(
+          initialConfig ? initialConfig.brandName : DEFAULT_ZABBIX_CONFIG.brandName
+        );
+        const [brandTagline, setBrandTagline] = useState(
+          initialConfig ? initialConfig.brandTagline : DEFAULT_ZABBIX_CONFIG.brandTagline
+        );
+        const [logoUrl, setLogoUrl] = useState(
+          initialConfig ? initialConfig.logoUrl : DEFAULT_ZABBIX_CONFIG.logoUrl
+        );
         const sourceTouched = useRef(false);
         const staleFiltersCleared = useRef(isStaleSampleLink(initialConfig));
-        const [filters, setFilters] = useState(
-          () => staleFiltersCleared.current ? { ...ALL_FILTERS$1 } : initialFilters()
-        );
-        const [now, setNow] = useState(/* @__PURE__ */ new Date());
-        const [resource, setResource] = useState("cpu");
-        const [problemTab, setProblemTab] = useState("All");
-        const [selectedHost, setSelectedHost] = useState(null);
-        useEffect(() => {
-          const timer = window.setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
-          return () => window.clearInterval(timer);
-        }, []);
+        const [filters, setFilters] = useState(() => ({ ...ALL_FILTERS$2 }));
         useEffect(() => {
           if (!canGoLive) {
             return;
@@ -2539,12 +5382,15 @@ System.register(['react', '@grafana/data'], (function (exports) {
             }
             setRefreshSeconds(config.refreshSeconds);
             setSampleEnabled(config.sampleDataEnabled);
+            setBrandName(config.brandName);
+            setBrandTagline(config.brandTagline);
+            setLogoUrl(config.logoUrl);
             if (!config.sampleDataEnabled) {
               sourceTouched.current = true;
               setSource("live");
               if (!staleFiltersCleared.current && isStaleSampleLink(config)) {
                 staleFiltersCleared.current = true;
-                setFilters({ ...ALL_FILTERS$1 });
+                setFilters({ ...ALL_FILTERS$2 });
               }
             } else if (!sourceTouched.current && config.defaultSource === "live") {
               setSource("live");
@@ -2567,14 +5413,18 @@ System.register(['react', '@grafana/data'], (function (exports) {
           return () => window.clearInterval(timer);
         }, [source, refreshSeconds]);
         useEffect(() => {
-          if (source !== "live") {
+          if (source !== "live" || fetchingRef.current) {
             return;
           }
           let cancelled = false;
-          setLiveState("loading");
+          fetchingRef.current = true;
+          if (!liveRef.current) {
+            setLiveState("loading");
+          }
           setLiveError(null);
-          fetchZabbixData().then((result) => {
+          fetchLiveData().then((result) => {
             if (!cancelled) {
+              liveRef.current = result;
               setLive(result);
               setLiveState("ready");
             }
@@ -2583,6 +5433,8 @@ System.register(['react', '@grafana/data'], (function (exports) {
               setLiveError(err.message || "Unable to reach the Zabbix API");
               setLiveState("error");
             }
+          }).finally(() => {
+            fetchingRef.current = false;
           });
           return () => {
             cancelled = true;
@@ -2601,7 +5453,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
             filtersInitialised.current = true;
             return;
           }
-          setFilters({ environment: ALL$1, tier: ALL$1, hostGroup: ALL$1, os: ALL$1, businessService: ALL$1 });
+          setFilters({ ...ALL_FILTERS$2 });
         }, [source]);
         const options = useMemo(() => {
           const envOrder = [
@@ -2626,8 +5478,14 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const onChange = (key, value) => {
           setFilters((prev) => ({ ...prev, [key]: value }));
         };
-        const filteredHosts = useMemo(() => data.hosts.filter((h) => matchesFilters(h, filters)), [data.hosts, filters]);
-        const hostByHostname = useMemo(() => new Map(data.hosts.map((h) => [h.hostname, h])), [data.hosts]);
+        const filteredHosts = useMemo(
+          () => data.hosts.filter((h) => matchesFilters(h, filters)),
+          [data.hosts, filters]
+        );
+        const hostByHostname = useMemo(
+          () => new Map(data.hosts.map((h) => [h.hostname, h])),
+          [data.hosts]
+        );
         const filteredProblems = useMemo(
           () => data.problems.filter((p) => {
             const h = hostByHostname.get(p.hostname);
@@ -2646,8 +5504,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
             hosts: count
           };
         }, [filteredHosts]);
-        const activeHost = selectedHost ? data.hosts.find((h) => h.id === selectedHost.id) || null : null;
-        const filtersActive = Object.values(filters).some((v) => v !== ALL$1);
+        const filtersActive = Object.values(filters).some((v) => v !== ALL$2);
         const total = filteredHosts.length;
         const unavailable = filteredHosts.filter((h) => h.connectivity === "unavailable").length;
         const maintenance = filteredHosts.filter((h) => h.maintenance).length;
@@ -2659,8 +5516,6 @@ System.register(['react', '@grafana/data'], (function (exports) {
         ).length;
         const totalProblems = filteredProblems.length;
         const unacknowledged = filteredProblems.filter((p) => !p.ack).length;
-        const safeTotal = total || 1;
-        const safeProblems = totalProblems || 1;
         const utilization = useMemo(() => {
           if (!filtersActive && source === "sample") {
             return data.utilization;
@@ -2708,15 +5563,130 @@ System.register(['react', '@grafana/data'], (function (exports) {
             };
           });
         }, [filteredHosts]);
-        const freshness = useMemo(
+        const problemCounts = useMemo(
           () => ({
-            upToDate: filteredHosts.filter((h) => h.dataState === "upToDate").length,
-            stale: filteredHosts.filter((h) => h.dataState === "stale").length,
-            noData: filteredHosts.filter((h) => h.dataState === "noData").length,
-            notMonitored: filteredHosts.filter((h) => h.dataState === "notMonitored").length
+            All: filteredProblems.length,
+            Critical: filteredProblems.filter((p) => p.severityGroup === "Critical").length,
+            Warning: filteredProblems.filter((p) => p.severityGroup === "Warning").length,
+            Info: filteredProblems.filter((p) => p.severityGroup === "Info").length
           }),
-          [filteredHosts]
+          [filteredProblems]
         );
+        const inventoryHrefFor = (scope, filterSet, host) => {
+          if (!canGoLive) {
+            return void 0;
+          }
+          const params = new URLSearchParams({ scope, source: effectiveSource });
+          if (host) {
+            params.set("host", host);
+          }
+          const onDataCenter = typeof window !== "undefined" && /\/data-center\/?$/.test(window.location.pathname);
+          if (onDataCenter) {
+            params.set("from", "data-center");
+          }
+          Object.keys(filterSet).forEach((key) => {
+            if (filterSet[key] !== ALL$2) {
+              params.set(key, filterSet[key]);
+            }
+          });
+          return `${appSubUrl()}/a/acme-command-center-app/servers?${params.toString()}`;
+        };
+        const drillHref = (scope, host) => inventoryHrefFor(scope, filters, host);
+        return {
+          sampleEnabled,
+          source,
+          onSource,
+          live,
+          liveState,
+          liveError,
+          connection,
+          refreshSeconds,
+          brandName,
+          brandTagline,
+          logoUrl,
+          canGoLive,
+          filters,
+          setFilters,
+          onChange,
+          options,
+          data,
+          effectiveSource,
+          filteredHosts,
+          filteredProblems,
+          hostByHostname,
+          fleet,
+          groups,
+          utilization,
+          filtersActive,
+          total,
+          available,
+          unavailable,
+          maintenance,
+          stale,
+          warning,
+          critical,
+          totalProblems,
+          unacknowledged,
+          problemCounts,
+          inventoryHrefFor,
+          drillHref
+        };
+      }
+
+      const ALL$1 = "All";
+      const fmt$1 = (n) => n.toLocaleString("en-US");
+      const pct$1 = (n) => `${n.toFixed(1)}%`;
+      function CommandCenterPage({ initialConfig } = {}) {
+        const {
+          data,
+          effectiveSource,
+          source,
+          onSource,
+          connection,
+          live,
+          liveError,
+          sampleEnabled,
+          refreshSeconds,
+          brandName,
+          brandTagline,
+          logoUrl,
+          canGoLive,
+          filters,
+          setFilters,
+          onChange,
+          options,
+          filteredHosts,
+          filteredProblems,
+          hostByHostname,
+          fleet,
+          groups,
+          utilization,
+          filtersActive,
+          total,
+          available,
+          unavailable,
+          maintenance,
+          stale,
+          warning,
+          critical,
+          totalProblems,
+          unacknowledged,
+          problemCounts,
+          inventoryHrefFor,
+          drillHref
+        } = useOpsData(initialConfig);
+        const [resource, setResource] = useState("cpu");
+        const [problemTab, setProblemTab] = useState("All");
+        const [selectedHost, setSelectedHost] = useState(null);
+        const activeHost = selectedHost ? data.hosts.find((h) => h.id === selectedHost.id) || null : null;
+        const openHost = (hostname) => {
+          const host = hostByHostname.get(hostname);
+          if (host) {
+            setSelectedHost(host);
+          }
+        };
+        const safeTotal = total || 1;
+        const safeProblems = totalProblems || 1;
         const serviceRows = useMemo(
           () => data.businessServices.filter((row) => {
             if (filters.businessService !== ALL$1 && row.name !== filters.businessService) {
@@ -2747,22 +5717,6 @@ System.register(['react', '@grafana/data'], (function (exports) {
             (r) => (filters.environment === ALL$1 || r.environment === filters.environment) && (filters.tier === ALL$1 || r.tier === filters.tier) && (!groupEnv || r.environment === groupEnv) && (filters.os === ALL$1 || r.os === filters.os) && (filters.businessService === ALL$1 || r.businessService === filters.businessService)
           );
         }, [data.topServers, filters, source, hostByHostname]);
-        const inventoryHrefFor = (scope, filterSet, host) => {
-          if (!canGoLive) {
-            return void 0;
-          }
-          const params = new URLSearchParams({ scope, source: effectiveSource });
-          if (host) {
-            params.set("host", host);
-          }
-          Object.keys(filterSet).forEach((key) => {
-            if (filterSet[key] !== ALL$1) {
-              params.set(key, filterSet[key]);
-            }
-          });
-          return `${appSubUrl()}/a/acme-command-center-app/servers?${params.toString()}`;
-        };
-        const drillHref = (scope, host) => inventoryHrefFor(scope, filters, host);
         const serviceDrillHref = (row) => {
           const environment = row.env === "PROD" || row.env === "DR" || row.env === "UAT" ? row.env : ALL$1;
           return inventoryHrefFor("total", {
@@ -2781,22 +5735,12 @@ System.register(['react', '@grafana/data'], (function (exports) {
           businessService: ALL$1,
           ...row.hostFilter || {}
         });
-        const problemCounts = useMemo(
-          () => ({
-            All: filteredProblems.length,
-            Critical: filteredProblems.filter((p) => p.severityGroup === "Critical").length,
-            Warning: filteredProblems.filter((p) => p.severityGroup === "Warning").length,
-            Info: filteredProblems.filter((p) => p.severityGroup === "Info").length
-          }),
-          [filteredProblems]
-        );
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-app" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement(
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-app" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement(
           Header,
           {
             filters,
             onChange,
             options,
-            now,
             source,
             onSource,
             connection,
@@ -2804,9 +5748,266 @@ System.register(['react', '@grafana/data'], (function (exports) {
             hostCount: live?.data.hosts.length,
             lastSync: live?.fetchedAt.toLocaleTimeString("en-GB", { hour12: false, timeZone: "Asia/Singapore" }),
             canGoLive,
-            sampleEnabled
+            sampleEnabled,
+            brandName,
+            brandTagline,
+            logoUrl
           }
-        ), source === "live" && connection === "error" ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner" }, /* @__PURE__ */ React.createElement("strong", null, "ZABBIX UNREACHABLE"), /* @__PURE__ */ React.createElement("span", null, liveError || "Unable to reach the Zabbix API."), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { marginLeft: "auto" } }, live ? "Showing last successful sync" : sampleEnabled ? "Showing sample data" : "No live data available")) : null, source === "live" && live && data.hosts.length > 0 && filtersActive && filteredHosts.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner warn" }, /* @__PURE__ */ React.createElement("strong", null, "NO SERVERS MATCH FILTERS"), /* @__PURE__ */ React.createElement("span", null, "Active filters exclude all ", fmt(data.hosts.length), " live server", data.hosts.length === 1 ? "" : "s", "."), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-banner-btn", onClick: () => setFilters({ ...ALL_FILTERS$1 }) }, "Clear filters")) : null, /* @__PURE__ */ React.createElement("div", { className: "cc-kpis" }, /* @__PURE__ */ React.createElement(
+        ), /* @__PURE__ */ React.createElement(LiveProblemsTicker, { problems: filteredProblems, onHost: openHost }), source === "live" && connection === "error" ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner" }, /* @__PURE__ */ React.createElement("strong", null, "ZABBIX UNREACHABLE"), /* @__PURE__ */ React.createElement("span", null, liveError || "Unable to reach the Zabbix API."), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { marginLeft: "auto" } }, live ? "Showing last successful sync" : sampleEnabled ? "Showing sample data" : "No live data available")) : null, source === "live" && live && data.hosts.length > 0 && filtersActive && filteredHosts.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner warn" }, /* @__PURE__ */ React.createElement("strong", null, "NO SERVERS MATCH FILTERS"), /* @__PURE__ */ React.createElement("span", null, "Active filters exclude all ", fmt$1(data.hosts.length), " live server", data.hosts.length === 1 ? "" : "s", "."), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-banner-btn", onClick: () => setFilters({ ...ALL_FILTERS }) }, "Clear filters")) : null, /* @__PURE__ */ React.createElement("div", { className: "cc-kpis" }, /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "server",
+            label: "TOTAL SERVERS",
+            value: fmt$1(total),
+            sub: filtersActive ? "Filtered inventory" : "Monitored inventory",
+            tone: "blue",
+            href: drillHref("total")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "check",
+            label: "AVAILABLE",
+            value: fmt$1(available),
+            sub: pct$1(available / safeTotal * 100),
+            delta: data.kpiDeltas.available,
+            deltaTone: "good",
+            tone: "green",
+            href: drillHref("available")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "x",
+            label: "UNAVAILABLE",
+            value: fmt$1(unavailable),
+            sub: pct$1(unavailable / safeTotal * 100),
+            delta: data.kpiDeltas.unavailable,
+            deltaTone: "bad",
+            tone: "red",
+            href: drillHref("unavailable")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "alert",
+            label: "WARNING",
+            value: fmt$1(warning),
+            sub: pct$1(warning / safeTotal * 100),
+            delta: data.kpiDeltas.warning,
+            deltaTone: "good",
+            tone: "yellow",
+            href: drillHref("warning")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "alert",
+            label: "CRITICAL",
+            value: fmt$1(critical),
+            sub: pct$1(critical / safeTotal * 100),
+            delta: data.kpiDeltas.critical,
+            deltaTone: "bad",
+            tone: "red",
+            href: drillHref("critical")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "bell",
+            label: "TOTAL PROBLEMS",
+            value: fmt$1(totalProblems),
+            sub: `${fmt$1(unacknowledged)} unacknowledged`,
+            tone: "purple",
+            href: drillHref("problems")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "bell-off",
+            label: "UNACKNOWLEDGED",
+            value: fmt$1(unacknowledged),
+            sub: pct$1(unacknowledged / safeProblems * 100),
+            tone: "orange",
+            href: drillHref("unacknowledged")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "wrench",
+            label: "IN MAINTENANCE",
+            value: fmt$1(maintenance),
+            sub: pct$1(maintenance / safeTotal * 100),
+            tone: "cyan",
+            href: drillHref("maintenance")
+          }
+        ), /* @__PURE__ */ React.createElement(
+          Kpi,
+          {
+            icon: "db",
+            label: "STALE / NO DATA",
+            value: fmt$1(stale),
+            sub: pct$1(stale / safeTotal * 100),
+            tone: "gray",
+            href: drillHref("stale")
+          }
+        )), /* @__PURE__ */ React.createElement("div", { className: "cc-util-row" }, /* @__PURE__ */ React.createElement(
+          UtilCard,
+          {
+            title: "CPU utilisation",
+            sub: "All servers",
+            avg: utilization.cpu.avg,
+            critical: utilization.cpu.critical,
+            warning: utilization.cpu.warning,
+            normal: utilization.cpu.normal,
+            accent: "#2f9bff"
+          }
+        ), /* @__PURE__ */ React.createElement(
+          UtilCard,
+          {
+            title: "Memory utilisation",
+            sub: "All servers",
+            avg: utilization.memory.avg,
+            critical: utilization.memory.critical,
+            warning: utilization.memory.warning,
+            normal: utilization.memory.normal,
+            accent: "#8b5cf6"
+          }
+        ), /* @__PURE__ */ React.createElement(
+          UtilCard,
+          {
+            title: "Disk utilisation",
+            sub: "All filesystems",
+            avg: utilization.disk.avg,
+            critical: utilization.disk.critical,
+            warning: utilization.disk.warning,
+            normal: utilization.disk.normal,
+            accent: "#00d47e"
+          }
+        ), /* @__PURE__ */ React.createElement(
+          UtilCard,
+          {
+            title: "Network utilisation",
+            sub: "All interfaces",
+            avg: utilization.network.avg,
+            critical: utilization.network.critical,
+            warning: utilization.network.warning,
+            normal: utilization.network.normal,
+            accent: "#00d4ff"
+          }
+        )), /* @__PURE__ */ React.createElement(GroupGrids, { groups, onSelect: setSelectedHost }), /* @__PURE__ */ React.createElement("div", { className: "cc-bottom" }, /* @__PURE__ */ React.createElement(BusinessServicesTable, { rows: serviceRows, href: serviceDrillHref }), /* @__PURE__ */ React.createElement(DrTable, { rows: data.drComponents, href: drDrillHref }), /* @__PURE__ */ React.createElement(TopServersPanel, { rows: topServers, resource, onResource: setResource, onHost: openHost })), /* @__PURE__ */ React.createElement(
+          ProblemsTable,
+          {
+            problems: filteredProblems,
+            tab: problemTab,
+            onTab: setProblemTab,
+            counts: problemCounts,
+            source: effectiveSource,
+            refreshSeconds,
+            onHost: openHost
+          }
+        ), activeHost ? /* @__PURE__ */ React.createElement(
+          HostDetailModal,
+          {
+            host: activeHost,
+            problems: data.problems,
+            fleet,
+            source: effectiveSource,
+            inventoryHref: drillHref("total", activeHost.hostname),
+            onClose: () => setSelectedHost(null)
+          }
+        ) : null);
+      }
+
+      const fmt = (n) => n.toLocaleString("en-US");
+      const pct = (n) => `${n.toFixed(1)}%`;
+      function DataCenterPage({ initialConfig } = {}) {
+        const {
+          data,
+          effectiveSource,
+          source,
+          onSource,
+          connection,
+          live,
+          liveError,
+          sampleEnabled,
+          refreshSeconds,
+          brandName,
+          brandTagline,
+          logoUrl,
+          canGoLive,
+          filters,
+          setFilters,
+          onChange,
+          options,
+          filteredHosts,
+          filteredProblems,
+          hostByHostname,
+          fleet,
+          groups,
+          filtersActive,
+          total,
+          available,
+          unavailable,
+          maintenance,
+          totalProblems,
+          drillHref
+        } = useOpsData(initialConfig);
+        const [problemTab, setProblemTab] = useState("All");
+        const [selectedHost, setSelectedHost] = useState(null);
+        const activeHost = selectedHost ? data.hosts.find((h) => h.id === selectedHost.id) || null : null;
+        const openHost = (hostname) => {
+          const host = hostByHostname.get(hostname);
+          if (host) {
+            setSelectedHost(host);
+          }
+        };
+        const safeTotal = total || 1;
+        const safeProblems = totalProblems || 1;
+        const envGroups = groups.filter((group) => group.key === "PROD" || group.key === "DR");
+        const unacknowledgedProblems = filteredProblems.filter(
+          (p) => !p.ack && p.severityGroup !== "Info"
+        );
+        const unacknowledgedCounts = {
+          All: unacknowledgedProblems.length,
+          Critical: unacknowledgedProblems.filter((p) => p.severityGroup === "Critical").length,
+          Warning: unacknowledgedProblems.filter((p) => p.severityGroup === "Warning").length,
+          Info: unacknowledgedProblems.filter((p) => p.severityGroup === "Info").length
+        };
+        const safeUnacknowledged = unacknowledgedProblems.length || 1;
+        const maintenanceHosts = filteredHosts.filter((h) => h.maintenance);
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-app cc-dc" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement(
+          Header,
+          {
+            filters,
+            onChange,
+            options,
+            source,
+            onSource,
+            connection,
+            version: live?.version,
+            hostCount: live?.data.hosts.length,
+            lastSync: live?.fetchedAt.toLocaleTimeString("en-GB", {
+              hour12: false,
+              timeZone: "Asia/Singapore"
+            }),
+            canGoLive,
+            sampleEnabled,
+            brandName,
+            brandTagline,
+            logoUrl,
+            title: "DATA CENTER OPERATION COMMAND CENTER",
+            subtitle: "Production  |  Disaster Recovery  |  Real-time Data Center Health from Zabbix"
+          }
+        ), /* @__PURE__ */ React.createElement(LiveProblemsTicker, { problems: unacknowledgedProblems, onHost: openHost }), source === "live" && connection === "error" ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner" }, /* @__PURE__ */ React.createElement("strong", null, "ZABBIX UNREACHABLE"), /* @__PURE__ */ React.createElement("span", null, liveError || "Unable to reach the Zabbix API."), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { marginLeft: "auto" } }, live ? "Showing last successful sync" : sampleEnabled ? "Showing sample data" : "No live data available")) : null, source === "live" && live && data.hosts.length > 0 && filtersActive && filteredHosts.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner warn" }, /* @__PURE__ */ React.createElement("strong", null, "NO SERVERS MATCH FILTERS"), /* @__PURE__ */ React.createElement("span", null, "Active filters exclude all ", fmt(data.hosts.length), " live server", data.hosts.length === 1 ? "" : "s", "."), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "cc-banner-btn",
+            onClick: () => setFilters({ ...filters, environment: "All", tier: "All", hostGroup: "All", os: "All", businessService: "All" })
+          },
+          "Clear filters"
+        )) : null, /* @__PURE__ */ React.createElement("div", { className: "cc-kpis" }, /* @__PURE__ */ React.createElement(
           Kpi,
           {
             icon: "server",
@@ -2845,10 +6046,8 @@ System.register(['react', '@grafana/data'], (function (exports) {
           {
             icon: "alert",
             label: "WARNING",
-            value: fmt(warning),
-            sub: pct(warning / safeTotal * 100),
-            delta: data.kpiDeltas.warning,
-            deltaTone: "good",
+            value: fmt(unacknowledgedCounts.Warning),
+            sub: `${pct(unacknowledgedCounts.Warning / safeUnacknowledged * 100)} unacknowledged`,
             tone: "yellow",
             href: drillHref("warning")
           }
@@ -2857,10 +6056,8 @@ System.register(['react', '@grafana/data'], (function (exports) {
           {
             icon: "alert",
             label: "CRITICAL",
-            value: fmt(critical),
-            sub: pct(critical / safeTotal * 100),
-            delta: data.kpiDeltas.critical,
-            deltaTone: "bad",
+            value: fmt(unacknowledgedCounts.Critical),
+            sub: `${pct(unacknowledgedCounts.Critical / safeUnacknowledged * 100)} unacknowledged`,
             tone: "red",
             href: drillHref("critical")
           }
@@ -2870,7 +6067,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
             icon: "bell",
             label: "TOTAL PROBLEMS",
             value: fmt(totalProblems),
-            sub: `${fmt(unacknowledged)} unacknowledged`,
+            sub: `${fmt(unacknowledgedProblems.length)} unacknowledged`,
             tone: "purple",
             href: drillHref("problems")
           }
@@ -2879,8 +6076,8 @@ System.register(['react', '@grafana/data'], (function (exports) {
           {
             icon: "bell-off",
             label: "UNACKNOWLEDGED",
-            value: fmt(unacknowledged),
-            sub: pct(unacknowledged / safeProblems * 100),
+            value: fmt(unacknowledgedProblems.length),
+            sub: pct(unacknowledgedProblems.length / safeProblems * 100),
             tone: "orange",
             href: drillHref("unacknowledged")
           }
@@ -2891,72 +6088,21 @@ System.register(['react', '@grafana/data'], (function (exports) {
             label: "IN MAINTENANCE",
             value: fmt(maintenance),
             sub: pct(maintenance / safeTotal * 100),
-            tone: "blue",
+            tone: "cyan",
             href: drillHref("maintenance")
           }
-        ), /* @__PURE__ */ React.createElement(
-          Kpi,
-          {
-            icon: "db",
-            label: "STALE / NO DATA",
-            value: fmt(stale),
-            sub: pct(stale / safeTotal * 100),
-            tone: "gray",
-            href: drillHref("stale")
-          }
-        )), /* @__PURE__ */ React.createElement("div", { className: "cc-util-row" }, /* @__PURE__ */ React.createElement(
-          UtilCard,
-          {
-            title: "CPU Utilisation (All Servers)",
-            sub: "All Servers",
-            avg: utilization.cpu.avg,
-            critical: utilization.cpu.critical,
-            warning: utilization.cpu.warning,
-            normal: utilization.cpu.normal,
-            accent: "#2f9bff"
-          }
-        ), /* @__PURE__ */ React.createElement(
-          UtilCard,
-          {
-            title: "Memory Utilisation (All Servers)",
-            sub: "All Servers",
-            avg: utilization.memory.avg,
-            critical: utilization.memory.critical,
-            warning: utilization.memory.warning,
-            normal: utilization.memory.normal,
-            accent: "#8b5cf6"
-          }
-        ), /* @__PURE__ */ React.createElement(
-          UtilCard,
-          {
-            title: "Disk Utilisation (All Filesystems)",
-            sub: "All Filesystems",
-            avg: utilization.disk.avg,
-            critical: utilization.disk.critical,
-            warning: utilization.disk.warning,
-            normal: utilization.disk.normal,
-            accent: "#00d47e"
-          }
-        ), /* @__PURE__ */ React.createElement(
-          UtilCard,
-          {
-            title: "Network Utilisation (All Interfaces)",
-            sub: "All Interfaces",
-            avg: utilization.network.avg,
-            critical: utilization.network.critical,
-            warning: utilization.network.warning,
-            normal: utilization.network.normal,
-            accent: "#00d4ff"
-          }
-        )), /* @__PURE__ */ React.createElement(GroupGrids, { groups, onSelect: setSelectedHost }), /* @__PURE__ */ React.createElement("div", { className: "cc-bottom" }, /* @__PURE__ */ React.createElement(BusinessServicesTable, { rows: serviceRows, href: serviceDrillHref }), /* @__PURE__ */ React.createElement(DrTable, { rows: data.drComponents, href: drDrillHref }), /* @__PURE__ */ React.createElement(FreshnessPanel, { counts: freshness, total }), /* @__PURE__ */ React.createElement(TopServersPanel, { rows: topServers, resource, onResource: setResource })), /* @__PURE__ */ React.createElement(
+        )), /* @__PURE__ */ React.createElement("div", { className: "cc-dc-envs" }, envGroups.map((group) => /* @__PURE__ */ React.createElement(GroupPanel, { key: group.key, group, onSelect: setSelectedHost })), /* @__PURE__ */ React.createElement(MaintenanceTable, { hosts: maintenanceHosts, onHost: openHost })), /* @__PURE__ */ React.createElement(
           ProblemsTable,
           {
-            problems: filteredProblems,
+            problems: unacknowledgedProblems,
             tab: problemTab,
             onTab: setProblemTab,
-            counts: problemCounts,
+            counts: unacknowledgedCounts,
             source: effectiveSource,
-            refreshSeconds
+            refreshSeconds,
+            onHost: openHost,
+            title: "Unacknowledged Problems",
+            tabs: ["All", "Critical", "Warning"]
           }
         ), activeHost ? /* @__PURE__ */ React.createElement(
           HostDetailModal,
@@ -2971,9 +6117,130 @@ System.register(['react', '@grafana/data'], (function (exports) {
         ) : null);
       }
 
+      var __defProp = Object.defineProperty;
+      var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+      var __publicField = (obj, key, value) => __defNormalProp(obj, key + "" , value);
+      class ErrorBoundary extends React.Component {
+        constructor() {
+          super(...arguments);
+          __publicField(this, "state", { error: null });
+        }
+        static getDerivedStateFromError(error) {
+          return { error };
+        }
+        componentDidCatch(error, info) {
+          console.error("OpsBeacon dashboard render failed", error, info.componentStack);
+        }
+        render() {
+          const { error } = this.state;
+          if (!error) {
+            return this.props.children;
+          }
+          return /* @__PURE__ */ React.createElement(
+            "div",
+            {
+              style: {
+                minHeight: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "24px",
+                background: "#04080f",
+                color: "#dbe7f5",
+                fontFamily: 'Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+              }
+            },
+            /* @__PURE__ */ React.createElement(
+              "div",
+              {
+                style: {
+                  maxWidth: "720px",
+                  width: "100%",
+                  padding: "22px 24px",
+                  border: "1px solid #5b1c26",
+                  borderRadius: "14px",
+                  background: "linear-gradient(180deg, rgba(40, 12, 18, 0.9), rgba(12, 8, 14, 0.95))",
+                  boxShadow: "0 18px 50px -30px rgba(255, 61, 87, 0.6)"
+                }
+              },
+              /* @__PURE__ */ React.createElement(
+                "div",
+                {
+                  style: {
+                    color: "#ff4d67",
+                    fontSize: "11px",
+                    fontWeight: 800,
+                    letterSpacing: "0.14em",
+                    marginBottom: "10px"
+                  }
+                },
+                "DASHBOARD RENDER ERROR"
+              ),
+              /* @__PURE__ */ React.createElement("div", { style: { fontSize: "13px", lineHeight: 1.5, marginBottom: "8px" } }, "The dashboard hit an unexpected error and stopped rendering. The Zabbix data connection is unaffected; reloading restores the dashboard."),
+              /* @__PURE__ */ React.createElement(
+                "pre",
+                {
+                  style: {
+                    margin: "0 0 16px",
+                    padding: "10px 12px",
+                    maxHeight: "180px",
+                    overflow: "auto",
+                    borderRadius: "8px",
+                    background: "rgba(0, 0, 0, 0.35)",
+                    color: "#ffb3bf",
+                    fontSize: "11px",
+                    whiteSpace: "pre-wrap"
+                  }
+                },
+                error.message || String(error)
+              ),
+              /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "10px" } }, /* @__PURE__ */ React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => window.location.reload(),
+                  style: {
+                    appearance: "none",
+                    cursor: "pointer",
+                    padding: "8px 14px",
+                    border: "1px solid rgba(255, 77, 103, 0.4)",
+                    borderRadius: "8px",
+                    background: "rgba(255, 61, 87, 0.14)",
+                    color: "#ffd7dd",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    fontFamily: "inherit"
+                  }
+                },
+                "Reload dashboard"
+              ), /* @__PURE__ */ React.createElement(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => this.setState({ error: null }),
+                  style: {
+                    appearance: "none",
+                    cursor: "pointer",
+                    padding: "8px 14px",
+                    border: "1px solid rgba(96, 165, 250, 0.28)",
+                    borderRadius: "8px",
+                    background: "rgba(47, 155, 255, 0.1)",
+                    color: "#cfe3ff",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    fontFamily: "inherit"
+                  }
+                },
+                "Try again"
+              ))
+            )
+          );
+        }
+      }
+
       const ALL = "All";
       const PAGE_SIZES = [25, 50, 100, 250];
-      const ALL_FILTERS = {
+      const ALL_FILTERS$1 = {
         environment: ALL,
         tier: ALL,
         hostGroup: ALL,
@@ -3011,7 +6278,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
         maintenance: { title: "Servers in maintenance", blurb: "Hosts currently inside a Zabbix maintenance window." },
         stale: {
           title: "Servers with stale / no data",
-          blurb: "Newest item value is 5\u201310 minutes old (stale) or older than 10 minutes (no data)."
+          blurb: "Newest item value lags the freshest item in the estate by 5\u201310 minutes (stale) or more than 10 minutes (no data)."
         }
       };
       const HEALTH_CLASS = {
@@ -3030,73 +6297,127 @@ System.register(['react', '@grafana/data'], (function (exports) {
       };
       const SRV_CSS = `
 .cc-srv { padding-top: 18px; }
-.cc-srv-head { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 14px; }
+.cc-srv-head { display: flex; gap: 16px 22px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
+.cc-srv-brand { display: flex; gap: 13px; align-items: flex-start; min-width: 0; }
+.cc-srv-titles { min-width: 260px; }
 .cc-srv-back {
-  display: inline-flex; align-items: center; gap: 5px; color: #7fc4ff; text-decoration: none;
-  font-size: 11px; padding: 6px 9px; border: 1px solid #1c314e; border-radius: 5px;
-  background: #0b1728; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; color: #9bd0ff; text-decoration: none;
+  font-size: 11.5px; font-weight: 600; padding: 7px 11px; border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 8px; background: rgba(10, 20, 36, 0.62); white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
-.cc-srv-back:hover { border-color: #2b6ca3; color: #fff; }
-.cc-srv-titles { min-width: 240px; }
-.cc-srv-title { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; line-height: 1; }
-.cc-srv-sub { font-size: 10px; color: #8ea3bf; margin-top: 6px; max-width: 760px; }
+.cc-srv-back:hover { border-color: rgba(127, 196, 255, 0.5); color: #fff; background: rgba(47, 155, 255, 0.12); }
+.cc-srv-title {
+  margin: 4px 0 5px; font-size: clamp(22px, 1.75vw, 28px); font-weight: 700;
+  letter-spacing: 0.045em; line-height: 1.12;
+  background: linear-gradient(90deg, #9bd0ff 0%, #e8f4ff 24%, #c4b5fd 50%, #7fc4ff 76%, #9bd0ff 100%);
+  background-size: 220% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: cc-title-shine 9s linear infinite;
+}
+.cc-srv-sub { font-size: 12px; line-height: 1.45; color: #9fb3cc; margin-top: 5px; max-width: 820px; }
 .cc-srv-sub strong { color: #dbe7f5; }
-.cc-srv-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cc-srv-actions { margin-left: auto; display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
 .cc-srv-btn {
-  appearance: none; font-family: inherit; cursor: pointer; font-size: 9.5px; font-weight: 700;
-  color: #dbe7f5; background: #0b1728; border: 1px solid #1c314e; border-radius: 5px;
-  padding: 6px 10px; letter-spacing: 0.2px;
+  appearance: none; font-family: inherit; cursor: pointer; font-size: 10.5px; font-weight: 600;
+  color: #dbe7f5; background: rgba(10, 20, 36, 0.62); border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 7px; padding: 7px 11px; letter-spacing: 0.02em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
 }
-.cc-srv-btn:hover { border-color: #2b6ca3; background: #10233a; }
-.cc-srv-btn:disabled { opacity: 0.5; cursor: default; }
+.cc-srv-btn:hover { border-color: rgba(127, 196, 255, 0.5); background: rgba(47, 155, 255, 0.12); color: #fff; }
+.cc-srv-btn:disabled { opacity: 0.45; cursor: default; }
 .cc-srv-badge {
-  font-size: 8px; font-weight: 800; letter-spacing: 0.6px; padding: 3px 7px;
-  border-radius: 3px; border: 1px solid #1c314e; color: #8ea3bf;
+  font-size: 9.5px; font-weight: 800; letter-spacing: 0.6px; padding: 3px 8px;
+  border-radius: 5px; border: 1px solid rgba(148, 184, 230, 0.24); color: #9fb3cc;
 }
 .cc-srv-badge.live { color: #00e676; border-color: #1c4a36; background: rgba(0, 230, 118, 0.08); }
 .cc-srv-badge.sample { color: #ffc107; border-color: #5b4a14; background: rgba(255, 193, 7, 0.08); }
-.cc-srv-filters { display: flex; gap: 9px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
-.cc-srv-search { min-width: 230px; }
-.cc-srv-search label { display: block; font-size: 8px; text-transform: uppercase; letter-spacing: 0.7px; color: #7f95b2; margin-bottom: 3px; }
-.cc-srv-search input {
-  width: 100%; background: #0b1627; border: 1px solid #203554; color: #dbe7f5;
-  border-radius: 5px; padding: 5px 7px; font-size: 10.5px; outline: none; font-family: inherit;
+.cc-srv-filters {
+  display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px;
+  padding: 12px 14px; border: 1px solid rgba(96, 165, 250, 0.16); border-radius: 14px;
+  background: linear-gradient(180deg, rgba(17, 33, 56, 0.7), rgba(7, 14, 26, 0.8));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 50px -34px rgba(0, 80, 180, 0.9);
 }
-.cc-srv-search input:focus { border-color: #2b6ca3; box-shadow: 0 0 0 2px rgba(43, 108, 163, 0.18); }
+.cc-srv-search { min-width: 230px; display: flex; flex-direction: column; gap: 3px; }
+.cc-srv-search label {
+  display: block; font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.09em; color: #9fb3cc; margin: 0;
+}
+.cc-srv-search input {
+  width: 100%; height: 26px; background-color: rgba(6, 12, 22, 0.85);
+  border: 1px solid rgba(148, 184, 230, 0.22); color: #dbe7f5;
+  border-radius: 7px; padding: 0 9px; font-size: 11.5px; outline: none;
+}
+.cc-srv-search input::placeholder { color: #6c82a0; }
+.cc-srv-search input:focus { border-color: #2f9bff; box-shadow: 0 0 0 3px rgba(47, 155, 255, 0.18); }
 .cc-srv-hostchip {
-  display: inline-flex; align-items: center; gap: 5px; font-size: 9px; color: #9db0c9;
-  background: #0b1728; border: 1px solid #24405f; border-radius: 5px;
-  padding: 5px 6px 5px 8px;
+  display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: #9fb3cc;
+  background: rgba(10, 20, 36, 0.62); border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 7px; padding: 5px 6px 5px 9px;
 }
 .cc-srv-hostchip strong { color: #dbe7f5; }
 .cc-srv-hostchip button {
   appearance: none; border: 0; background: transparent; color: #7fc4ff; cursor: pointer;
-  font-size: 13px; line-height: 1; padding: 0 2px; font-family: inherit;
+  font-size: 14px; line-height: 1; padding: 0 2px; font-family: inherit;
 }
-.cc-srv-table { font-size: 9.5px; }
-.cc-srv-table td { padding: 5px 7px; }
+.cc-srv-table { font-size: 11.5px; }
+.cc-srv-table td { padding: 7px 8px; }
 .cc-srv-table .hostname { color: #e6f0fb; font-weight: 700; }
-.cc-srv-health { font-weight: 800; font-size: 8.3px; text-transform: uppercase; letter-spacing: 0.2px; }
+.cc-srv-health { font-weight: 800; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.2px; }
 .cc-h-healthy { color: #00d47e; }
 .cc-h-warning { color: #ffc107; }
-.cc-h-critical { color: #ff4d67; }
-.cc-h-stale { color: #8ea3bf; }
-.cc-h-maintenance { color: #5fb0ff; }
-.cc-h-unavailable { color: #ff8a3d; }
+.cc-h-critical { color: #ff3b30; }
+.cc-h-stale { color: #8f9298; }
+.cc-h-maintenance { color: #22d3ee; }
+.cc-h-unavailable { color: #a855f7; }
 .cc-srv-util { text-align: right; font-variant-numeric: tabular-nums; }
-.cc-srv-util.hot { color: #ff4d67; font-weight: 700; }
+.cc-srv-util.hot { color: #ff3b30; font-weight: 700; }
 .cc-srv-util.warm { color: #ffc107; }
-.cc-srv-problem { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+.cc-srv-problem { max-width: 340px; overflow: hidden; text-overflow: ellipsis; }
 .cc-srv-pager {
-  display: flex; align-items: center; gap: 10px; justify-content: flex-end; flex-wrap: wrap;
-  padding: 7px 10px; border-top: 1px solid #14253c; color: #8ea3bf; font-size: 9px;
+  display: flex; align-items: center; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
+  padding: 10px 4px 0; margin-top: 4px; border-top: 1px solid rgba(20, 37, 60, 0.8);
+  color: #9fb3cc; font-size: 10.5px;
 }
-.cc-srv-pager select {
-  background: #0b1627; border: 1px solid #203554; color: #dbe7f5; border-radius: 5px;
-  padding: 3px 6px; font-size: 9px; font-family: inherit; cursor: pointer;
+.cc-srv-pager > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+/* Explicit sizing: Grafana's global select rules made this control full-width
+   and very thin inside the flex pager. The arrow is drawn here so the height
+   matches the Prev / Next buttons. */
+.cc-srv-pager > span > select {
+  -webkit-appearance: none; appearance: none;
+  width: 74px; flex: 0 0 74px; height: 27px;
+  box-sizing: border-box;
+  padding: 0 24px 0 9px;
+  font-family: inherit; font-size: 11px; font-weight: 600; line-height: 25px;
+  color: #dbe7f5;
+  background-color: rgba(10, 20, 36, 0.62);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237fc4ff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 9px 6px;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 7px;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.18s ease, background-color 0.18s ease;
 }
-.cc-srv-empty { padding: 34px 20px; text-align: center; color: #8ea3bf; font-size: 11px; }
+.cc-srv-pager > span > select:hover {
+  border-color: rgba(127, 196, 255, 0.5);
+  background-color: rgba(47, 155, 255, 0.12);
+}
+.cc-srv-pager > span > select:focus-visible {
+  outline: 2px solid rgba(127, 196, 255, 0.7);
+  outline-offset: 1px;
+}
+.cc-srv-pager > span > select option { background: #0b1626; color: #dbe7f5; }
+.cc-srv-empty { padding: 34px 20px; text-align: center; color: #9fb3cc; font-size: 12px; }
 .cc-srv-error { color: #ffb3bf; }
+
+@media (max-width: 900px) {
+  .cc-srv-brand { flex-wrap: wrap; }
+  .cc-srv-actions { margin-left: 0; }
+}
 `;
       function queryParam(query, key) {
         const value = query ? query[key] : void 0;
@@ -3172,10 +6493,27 @@ System.register(['react', '@grafana/data'], (function (exports) {
         initialConfig
       }) {
         const scope = useMemo(() => parseScope(queryParam(query, "scope")), [query]);
+        const origin = useMemo(
+          () => queryParam(query, "from") === "data-center" ? "data-center" : "command-center",
+          [query]
+        );
+        const backLabel = origin === "data-center" ? "Data Center Ops" : "Command Center";
         const requestedSource = queryParam(query, "source") === "live" ? "live" : "sample";
         const canGoLive = useMemo(() => isGrafanaHosted(), []);
         const [sampleEnabled, setSampleEnabled] = useState(
           initialConfig ? initialConfig.sampleDataEnabled : true
+        );
+        const [refreshSeconds, setRefreshSeconds] = useState(
+          initialConfig ? initialConfig.refreshSeconds : DEFAULT_ZABBIX_CONFIG.refreshSeconds
+        );
+        const [brandName, setBrandName] = useState(
+          initialConfig ? initialConfig.brandName : DEFAULT_ZABBIX_CONFIG.brandName
+        );
+        const [brandTagline, setBrandTagline] = useState(
+          initialConfig ? initialConfig.brandTagline : DEFAULT_ZABBIX_CONFIG.brandTagline
+        );
+        const [logoUrl, setLogoUrl] = useState(
+          initialConfig ? initialConfig.logoUrl : DEFAULT_ZABBIX_CONFIG.logoUrl
         );
         useEffect(() => {
           if (!canGoLive) {
@@ -3185,6 +6523,10 @@ System.register(['react', '@grafana/data'], (function (exports) {
           loadZabbixConfig().then((config) => {
             if (!cancelled) {
               setSampleEnabled(config.sampleDataEnabled);
+              setRefreshSeconds(config.refreshSeconds);
+              setBrandName(config.brandName);
+              setBrandTagline(config.brandTagline);
+              setLogoUrl(config.logoUrl);
             }
           }).catch(() => {
           });
@@ -3200,15 +6542,21 @@ System.register(['react', '@grafana/data'], (function (exports) {
         );
         const [liveError, setLiveError] = useState(null);
         const [tick, setTick] = useState(0);
+        const liveRef = useRef(null);
+        const fetchingRef = useRef(false);
         useEffect(() => {
-          if (source !== "live") {
+          if (source !== "live" || fetchingRef.current) {
             return;
           }
           let cancelled = false;
-          setLiveState("loading");
+          fetchingRef.current = true;
+          if (!liveRef.current) {
+            setLiveState("loading");
+          }
           setLiveError(null);
-          fetchZabbixData().then((result) => {
+          fetchLiveData().then((result) => {
             if (!cancelled) {
+              liveRef.current = result;
               setLive(result);
               setLiveState("ready");
             }
@@ -3217,17 +6565,26 @@ System.register(['react', '@grafana/data'], (function (exports) {
               setLiveError(err.message || "Unable to reach the Zabbix API");
               setLiveState("error");
             }
+          }).finally(() => {
+            fetchingRef.current = false;
           });
           return () => {
             cancelled = true;
           };
         }, [source, tick]);
+        useEffect(() => {
+          if (source !== "live") {
+            return;
+          }
+          const timer = window.setInterval(() => setTick((t) => t + 1), refreshSeconds * 1e3);
+          return () => window.clearInterval(timer);
+        }, [source, refreshSeconds]);
         const data = source === "live" ? live ? live.data : null : sample;
         const staleSampleLink = useRef(
           requestedSource === "sample" && !(initialConfig ? initialConfig.sampleDataEnabled : true)
         );
         const [filters, setFilters] = useState(
-          () => staleSampleLink.current ? { ...ALL_FILTERS } : parseFilters(query)
+          () => staleSampleLink.current ? { ...ALL_FILTERS$1 } : parseFilters(query)
         );
         const [hostFilter, setHostFilter] = useState(
           () => staleSampleLink.current ? null : queryParam(query, "host")
@@ -3235,17 +6592,30 @@ System.register(['react', '@grafana/data'], (function (exports) {
         useEffect(() => {
           if (!sampleEnabled && requestedSource === "sample" && !staleSampleLink.current) {
             staleSampleLink.current = true;
-            setFilters({ ...ALL_FILTERS });
+            setFilters({ ...ALL_FILTERS$1 });
             setHostFilter(null);
           }
         }, [sampleEnabled, requestedSource]);
         const [search, setSearch] = useState("");
         const [page, setPage] = useState(1);
         const [pageSize, setPageSize] = useState(50);
+        const [selectedHost, setSelectedHost] = useState(null);
         const hosts = data ? data.hosts : [];
         const problems = data ? data.problems : [];
         const filteredHosts = useMemo(() => hosts.filter((h) => matchesFilters(h, filters)), [hosts, filters]);
         const hostByHostname = useMemo(() => new Map(hosts.map((h) => [h.hostname, h])), [hosts]);
+        const fleet = useMemo(() => {
+          const count = filteredHosts.length;
+          const average = (key) => count ? filteredHosts.reduce((sum, h) => sum + h[key], 0) / count : 0;
+          return {
+            cpu: average("cpu"),
+            memory: average("memory"),
+            disk: average("disk"),
+            network: average("network"),
+            hosts: count
+          };
+        }, [filteredHosts]);
+        const activeHost = selectedHost ? hosts.find((h) => h.id === selectedHost.id) || null : null;
         const filteredProblems = useMemo(
           () => problems.filter((p) => {
             const host = hostByHostname.get(p.hostname);
@@ -3348,7 +6718,8 @@ System.register(['react', '@grafana/data'], (function (exports) {
             backParams.set(key, filters[key]);
           }
         });
-        const backHref = `${appSubUrl()}/a/acme-command-center-app/command-center?${backParams.toString()}`;
+        const backTarget = origin === "data-center" ? "/data-center" : "/command-center";
+        const backHref = `${appSubUrl()}/a/acme-command-center-app${backTarget}?${backParams.toString()}`;
         const exportCsv = () => {
           if (typeof document === "undefined") {
             return;
@@ -3404,7 +6775,7 @@ System.register(['react', '@grafana/data'], (function (exports) {
         };
         const meta = SCOPE_META[scope];
         const sourceBadge = source === "live" ? "LIVE" : "SAMPLE";
-        const header = /* @__PURE__ */ React.createElement("div", { className: "cc-srv-head" }, /* @__PURE__ */ React.createElement("a", { className: "cc-srv-back", href: backHref }, "\u2190 Command Center"), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-titles" }, /* @__PURE__ */ React.createElement("div", { className: "cc-srv-title" }, "SERVER INVENTORY"), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-sub" }, /* @__PURE__ */ React.createElement("strong", null, meta.title), " \u2014 ", meta.blurb, " ", scopeProblems.length > 0 || meta.problems ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, scopeProblems.length), " problem", scopeProblems.length === 1 ? "" : "s", " across", " ", /* @__PURE__ */ React.createElement("strong", null, visibleHosts.length), " server", visibleHosts.length === 1 ? "" : "s", ".") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, visibleHosts.length), " server", visibleHosts.length === 1 ? "" : "s", "."))), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-actions" }, /* @__PURE__ */ React.createElement("span", { className: `cc-srv-badge ${source === "live" ? "live" : "sample"}` }, sourceBadge), live ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 9 } }, "sync ", live.fetchedAt.toLocaleTimeString("en-GB", { hour12: false, timeZone: "Asia/Singapore" })) : null, source === "live" ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-srv-btn", onClick: () => setTick((t) => t + 1), disabled: liveState === "loading" }, liveState === "loading" ? "Refreshing\u2026" : "Refresh") : null, /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-srv-btn", onClick: exportCsv, disabled: !data || visibleHosts.length === 0 }, "Export CSV")));
+        const header = /* @__PURE__ */ React.createElement("div", { className: "cc-srv-head" }, /* @__PURE__ */ React.createElement("a", { className: "cc-srv-back", href: backHref }, "\u2190 ", backLabel), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-brand" }, /* @__PURE__ */ React.createElement(BrandMark, { logoUrl }), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-titles" }, /* @__PURE__ */ React.createElement("div", { className: "cc-eyebrow" }, brandName, " ", /* @__PURE__ */ React.createElement("span", null, "\xB7"), " ", brandTagline), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-title" }, "SERVER INVENTORY"), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-sub" }, /* @__PURE__ */ React.createElement("strong", null, meta.title), " \u2014 ", meta.blurb, " ", scopeProblems.length > 0 || meta.problems ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, scopeProblems.length), " problem", scopeProblems.length === 1 ? "" : "s", " across", " ", /* @__PURE__ */ React.createElement("strong", null, visibleHosts.length), " server", visibleHosts.length === 1 ? "" : "s", ".") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("strong", null, visibleHosts.length), " server", visibleHosts.length === 1 ? "" : "s", ".")))), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-actions" }, /* @__PURE__ */ React.createElement("span", { className: `cc-srv-badge ${source === "live" ? "live" : "sample"}` }, sourceBadge), live ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 9 } }, "sync ", live.fetchedAt.toLocaleTimeString("en-GB", { hour12: false, timeZone: "Asia/Singapore" }), source === "live" ? ` \xB7 auto ${refreshSeconds}s` : "") : null, source === "live" ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-srv-btn", onClick: () => setTick((t) => t + 1), disabled: liveState === "loading" }, liveState === "loading" ? "Refreshing\u2026" : "Refresh") : null, /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-srv-btn", onClick: exportCsv, disabled: !data || visibleHosts.length === 0 }, "Export CSV")));
         const filterBar = /* @__PURE__ */ React.createElement("div", { className: "cc-srv-filters" }, /* @__PURE__ */ React.createElement("div", { className: "cc-filter", style: { minWidth: 120 } }, /* @__PURE__ */ React.createElement("label", null, "Environment"), /* @__PURE__ */ React.createElement("select", { value: filters.environment, onChange: (e) => changeFilter("environment", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), /* @__PURE__ */ React.createElement("option", { value: "PROD" }, "PROD"), /* @__PURE__ */ React.createElement("option", { value: "DR" }, "DR"), /* @__PURE__ */ React.createElement("option", { value: "UAT" }, "DEV / UAT"))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter", style: { minWidth: 110 } }, /* @__PURE__ */ React.createElement("label", null, "System Tier"), /* @__PURE__ */ React.createElement("select", { value: filters.tier, onChange: (e) => changeFilter("tier", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), /* @__PURE__ */ React.createElement("option", { value: "Tier 1" }, "Tier 1"), /* @__PURE__ */ React.createElement("option", { value: "Tier 2" }, "Tier 2"), /* @__PURE__ */ React.createElement("option", { value: "Tier 3" }, "Tier 3"))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter", style: { minWidth: 150 } }, /* @__PURE__ */ React.createElement("label", null, "Host Group"), /* @__PURE__ */ React.createElement("select", { value: filters.hostGroup, onChange: (e) => changeFilter("hostGroup", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), groupOptions.map((g) => /* @__PURE__ */ React.createElement("option", { key: g, value: g }, g)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter", style: { minWidth: 110 } }, /* @__PURE__ */ React.createElement("label", null, "OS Type"), /* @__PURE__ */ React.createElement("select", { value: filters.os, onChange: (e) => changeFilter("os", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), osOptions.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter", style: { minWidth: 160 } }, /* @__PURE__ */ React.createElement("label", null, "Business Service"), /* @__PURE__ */ React.createElement(
           "select",
           {
@@ -3424,12 +6795,20 @@ System.register(['react', '@grafana/data'], (function (exports) {
               setPage(1);
             }
           }
-        )), hostFilter ? /* @__PURE__ */ React.createElement("span", { className: "cc-srv-hostchip" }, "Host: ", /* @__PURE__ */ React.createElement("strong", null, hostFilter), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: clearHostFilter, "aria-label": "Clear host filter" }, "\xD7")) : null, /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-srv-btn", onClick: resetFilters }, "Reset"));
+        )), hostFilter ? /* @__PURE__ */ React.createElement("span", { className: "cc-srv-hostchip" }, "Host:", " ", hostByHostname.has(hostFilter) ? /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "cc-host-link",
+            onClick: () => setSelectedHost(hostByHostname.get(hostFilter) || null)
+          },
+          hostFilter
+        ) : /* @__PURE__ */ React.createElement("strong", null, hostFilter), /* @__PURE__ */ React.createElement("button", { type: "button", onClick: clearHostFilter, "aria-label": "Clear host filter" }, "\xD7")) : null, /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-srv-btn", onClick: resetFilters }, "Reset"));
         const body = !data ? /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: `cc-srv-empty ${liveState === "error" ? "cc-srv-error" : ""}` }, liveState === "error" ? /* @__PURE__ */ React.createElement(React.Fragment, null, "Could not load live Zabbix data: ", liveError, /* @__PURE__ */ React.createElement("div", { style: { marginTop: 12 } }, /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-srv-btn", onClick: () => setTick((t) => t + 1) }, "Retry"))) : "Loading live data from Zabbix\u2026")) : /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, meta.title), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, visibleHosts.length, " server", visibleHosts.length === 1 ? "" : "s", scopeProblems.length > 0 ? ` \xB7 ${scopeProblems.length} problem${scopeProblems.length === 1 ? "" : "s"}` : "")), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-srv-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", null, "Host Group"), /* @__PURE__ */ React.createElement("th", null, "OS"), /* @__PURE__ */ React.createElement("th", null, "Business Service"), /* @__PURE__ */ React.createElement("th", null, "Health"), /* @__PURE__ */ React.createElement("th", null, "Data"), /* @__PURE__ */ React.createElement("th", null, "Last Seen"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "CPU"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Memory"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Disk"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Network"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Problems"), /* @__PURE__ */ React.createElement("th", null, "Latest Problem"))), /* @__PURE__ */ React.createElement("tbody", null, pageRows.map((h, index) => {
           const hostProblems = problemsByHost.get(h.hostname) || [];
           const unack = hostProblems.filter((p) => !p.ack).length;
           const latest = hostProblems.slice().sort((a, b) => a.minutesAgo - b.minutesAgo)[0];
-          return /* @__PURE__ */ React.createElement("tr", { key: h.id, className: "cc-srv-row" }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, (currentPage - 1) * pageSize + index + 1), /* @__PURE__ */ React.createElement("td", { className: "hostname" }, h.hostname), /* @__PURE__ */ React.createElement("td", null, h.environment), /* @__PURE__ */ React.createElement("td", null, h.tier), /* @__PURE__ */ React.createElement("td", null, h.hostGroup), /* @__PURE__ */ React.createElement("td", null, h.os), /* @__PURE__ */ React.createElement("td", null, h.businessService), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: `cc-srv-health ${HEALTH_CLASS[h.health]}` }, h.health)), /* @__PURE__ */ React.createElement("td", null, DATA_STATE_LABEL[h.dataState]), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.lastSeenMin >= 9999 ? "\u2014" : `${h.lastSeenMin}m`), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.cpu) }, h.cpu.toFixed(0), "%"), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.memory) }, h.memory.toFixed(0), "%"), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.disk) }, h.disk.toFixed(0), "%"), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.network) }, h.network.toFixed(1), "%"), /* @__PURE__ */ React.createElement("td", { className: "num" }, hostProblems.length, unack > 0 ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted" }, " (", unack, " unack)") : null), /* @__PURE__ */ React.createElement("td", { className: "cc-srv-problem" }, latest ? /* @__PURE__ */ React.createElement("span", { className: `cc-sev cc-sev-${latest.severity.toLowerCase()}`, title: `${latest.problem} \xB7 ${latest.time} \xB7 ${latest.duration}` }, latest.problem) : /* @__PURE__ */ React.createElement("span", { className: "cc-muted" }, "\u2014")));
+          return /* @__PURE__ */ React.createElement("tr", { key: h.id, className: "cc-srv-row" }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, (currentPage - 1) * pageSize + index + 1), /* @__PURE__ */ React.createElement("td", { className: "hostname" }, /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => setSelectedHost(h) }, h.hostname)), /* @__PURE__ */ React.createElement("td", null, h.environment), /* @__PURE__ */ React.createElement("td", null, h.tier), /* @__PURE__ */ React.createElement("td", null, h.hostGroup), /* @__PURE__ */ React.createElement("td", null, h.os), /* @__PURE__ */ React.createElement("td", null, h.businessService), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: `cc-srv-health ${HEALTH_CLASS[h.health]}` }, h.health)), /* @__PURE__ */ React.createElement("td", null, DATA_STATE_LABEL[h.dataState]), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.lastSeenMin >= 9999 ? "\u2014" : `${h.lastSeenMin}m`), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.cpu) }, h.cpu.toFixed(0), "%"), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.memory) }, h.memory.toFixed(0), "%"), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.disk) }, h.disk.toFixed(0), "%"), /* @__PURE__ */ React.createElement("td", { className: utilClass(h.network) }, h.network.toFixed(1), "%"), /* @__PURE__ */ React.createElement("td", { className: "num" }, hostProblems.length, unack > 0 ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted" }, " (", unack, " unack)") : null), /* @__PURE__ */ React.createElement("td", { className: "cc-srv-problem" }, latest ? /* @__PURE__ */ React.createElement("span", { className: `cc-sev cc-sev-${latest.severity.toLowerCase()}`, title: `${latest.problem} \xB7 ${latest.time} \xB7 ${latest.duration}` }, latest.problem) : /* @__PURE__ */ React.createElement("span", { className: "cc-muted" }, "\u2014")));
         }), pageRows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 16 }, /* @__PURE__ */ React.createElement("div", { className: "cc-srv-empty" }, "No servers match this view and the active filters."))) : null))), /* @__PURE__ */ React.createElement("div", { className: "cc-srv-pager" }, /* @__PURE__ */ React.createElement("span", null, "Showing ", visibleHosts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1, "\u2013", Math.min(currentPage * pageSize, visibleHosts.length), " of ", visibleHosts.length), /* @__PURE__ */ React.createElement("span", null, "Page size", " ", /* @__PURE__ */ React.createElement(
           "select",
           {
@@ -3459,9 +6838,20 @@ System.register(['react', '@grafana/data'], (function (exports) {
           },
           "Next"
         )));
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-app cc-srv" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("style", null, SRV_CSS), header, filterBar, source === "live" && liveState === "error" && live ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner" }, /* @__PURE__ */ React.createElement("strong", null, "ZABBIX UNREACHABLE"), /* @__PURE__ */ React.createElement("span", null, liveError || "Unable to reach the Zabbix API."), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { marginLeft: "auto" } }, "Showing last successful sync")) : null, body);
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-app cc-srv" }, /* @__PURE__ */ React.createElement("style", null, CSS), /* @__PURE__ */ React.createElement("style", null, SRV_CSS), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a1", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a2", "aria-hidden": "true" }), /* @__PURE__ */ React.createElement("div", { className: "cc-aurora a3", "aria-hidden": "true" }), header, filterBar, source === "live" && liveState === "error" && live ? /* @__PURE__ */ React.createElement("div", { className: "cc-banner" }, /* @__PURE__ */ React.createElement("strong", null, "ZABBIX UNREACHABLE"), /* @__PURE__ */ React.createElement("span", null, liveError || "Unable to reach the Zabbix API."), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { marginLeft: "auto" } }, "Showing last successful sync")) : null, body, activeHost ? /* @__PURE__ */ React.createElement(
+          HostDetailModal,
+          {
+            host: activeHost,
+            problems,
+            fleet,
+            source,
+            onClose: () => setSelectedHost(null)
+          }
+        ) : null);
       }
 
+      const MAX_LOGO_BYTES = 256 * 1024;
+      const LOGO_TYPES = "image/png,image/jpeg,image/webp,image/gif,image/svg+xml";
       const CFG_CSS = `
 .cc-cfg {
   max-width: 820px;
@@ -3538,6 +6928,52 @@ System.register(['react', '@grafana/data'], (function (exports) {
   border-radius: 2px;
   font-size: 12px;
 }
+.cc-cfg-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 6px 0 4px;
+}
+.cc-cfg-logo-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 56px;
+  padding: 7px;
+  border: 1px dashed var(--border-weak, #34363e);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.cc-cfg-logo-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.cc-cfg-logo-preview span { color: var(--text-color-secondary, #9da5b3); font-size: 11px; }
+.cc-cfg-logo-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.cc-cfg-file {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  margin: 0 !important;
+  padding: 6px 12px;
+  border: 1px solid var(--border-weak, #34363e);
+  border-radius: 4px;
+  background: var(--button-background, #2e3035);
+  color: var(--text-color, #d8d9da);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.cc-cfg-file:hover { border-color: var(--border-medium, #5a5d67); }
+.cc-cfg-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 .cc-cfg-actions {
   display: flex;
   gap: 10px;
@@ -3613,16 +7049,41 @@ System.register(['react', '@grafana/data'], (function (exports) {
           setConfig((prev) => ({ ...prev, ...partial }));
           setStatus(null);
         };
+        const onLogoFile = (event) => {
+          const input = event.target;
+          const file = input.files && input.files[0];
+          input.value = "";
+          if (!file) {
+            return;
+          }
+          if (!/^image\/(png|jpe?g|gif|webp|svg\+xml)$/i.test(file.type)) {
+            setStatus({ tone: "error", text: "Unsupported logo format. Use PNG, SVG, JPEG, WebP or GIF." });
+            return;
+          }
+          if (file.size > MAX_LOGO_BYTES) {
+            setStatus({
+              tone: "error",
+              text: `Logo is ${Math.round(file.size / 1024)} KB; the limit is 256 KB.`
+            });
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => patch({ logoUrl: String(reader.result || "") });
+          reader.onerror = () => setStatus({ tone: "error", text: "Could not read the selected file." });
+          reader.readAsDataURL(file);
+        };
         const endpoint = useMemo(() => zabbixEndpoint(config, "api"), [config]);
         const proxyBase = appSubUrl() || "";
         const onSave = async () => {
           setSaving(true);
           setStatus(null);
           try {
-            await saveZabbixConfig(config);
+            const saved = await saveZabbixConfig(config);
+            setConfig(saved);
+            const adjusted = saved.refreshSeconds !== config.refreshSeconds;
             setStatus({
               tone: "ok",
-              text: "Connection settings saved. The dashboard picks them up on its next refresh; reload it to apply a new refresh interval."
+              text: adjusted ? `Settings saved. The refresh interval was adjusted to ${saved.refreshSeconds} s (allowed range 15\u20133600 s). The Command Center and Server Inventory apply them on their next load.` : "Connection settings saved. The Command Center and Server Inventory apply them on their next load; reload an open page to switch to a new refresh interval."
             });
           } catch (err) {
             setStatus({ tone: "error", text: `Could not save settings: ${err.message}` });
@@ -3725,7 +7186,34 @@ System.register(['react', '@grafana/data'], (function (exports) {
             value: config.publicPath,
             onChange: (e) => patch({ publicPath: e.target.value })
           }
-        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, "Used for ", /* @__PURE__ */ React.createElement("code", null, "apiinfo.version"), ", which Zabbix rejects when an Authorization header is present. Still guarded by the Grafana session check.")), /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", null, "Dashboard behaviour"), /* @__PURE__ */ React.createElement("label", { className: "inline", htmlFor: "cc-sample-data" }, /* @__PURE__ */ React.createElement(
+        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, "Used for ", /* @__PURE__ */ React.createElement("code", null, "apiinfo.version"), ", which Zabbix rejects when an Authorization header is present. Still guarded by the Grafana session check.")), /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", null, "Branding"), /* @__PURE__ */ React.createElement("label", { htmlFor: "cc-brand-name" }, "Brand name"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            id: "cc-brand-name",
+            type: "text",
+            maxLength: 40,
+            value: config.brandName,
+            onChange: (e) => patch({ brandName: e.target.value })
+          }
+        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, "Shown in the Command Center and Server Inventory header. Defaults to OPSBEACON."), /* @__PURE__ */ React.createElement("label", { htmlFor: "cc-brand-tagline" }, "Tagline"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            id: "cc-brand-tagline",
+            type: "text",
+            maxLength: 80,
+            value: config.brandTagline,
+            onChange: (e) => patch({ brandTagline: e.target.value })
+          }
+        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, "Displayed after the brand name in the header eyebrow."), /* @__PURE__ */ React.createElement("label", { htmlFor: "cc-logo-file" }, "Logo"), /* @__PURE__ */ React.createElement("div", { className: "cc-cfg-logo" }, /* @__PURE__ */ React.createElement("div", { className: "cc-cfg-logo-preview" }, config.logoUrl ? /* @__PURE__ */ React.createElement("img", { src: config.logoUrl, alt: "Brand logo preview" }) : /* @__PURE__ */ React.createElement("span", null, "No logo")), /* @__PURE__ */ React.createElement("div", { className: "cc-cfg-logo-actions" }, /* @__PURE__ */ React.createElement("label", { className: "cc-cfg-file", htmlFor: "cc-logo-file" }, "Upload logo\u2026", /* @__PURE__ */ React.createElement("input", { id: "cc-logo-file", type: "file", accept: LOGO_TYPES, onChange: onLogoFile })), config.logoUrl ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "secondary", onClick: () => patch({ logoUrl: "" }) }, "Remove logo") : null)), /* @__PURE__ */ React.createElement("p", { className: "help" }, "PNG, SVG, JPEG, WebP or GIF up to 256 KB. The image replaces the default three-bar mark and is contained within a 40 px-high header slot."), /* @__PURE__ */ React.createElement("label", { htmlFor: "cc-logo-url" }, "Or logo URL"), /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            id: "cc-logo-url",
+            type: "text",
+            placeholder: "https://example.com/logo.svg",
+            value: config.logoUrl.startsWith("data:") ? "" : config.logoUrl,
+            onChange: (e) => patch({ logoUrl: e.target.value })
+          }
+        ), /* @__PURE__ */ React.createElement("p", { className: "help" }, config.logoUrl.startsWith("data:") ? "Currently using an uploaded image embedded in plugin settings. Enter a URL to replace it." : "An absolute http(s) URL to an image. Leave blank to use the default mark.")), /* @__PURE__ */ React.createElement("fieldset", null, /* @__PURE__ */ React.createElement("legend", null, "Dashboard behaviour"), /* @__PURE__ */ React.createElement("label", { className: "inline", htmlFor: "cc-sample-data" }, /* @__PURE__ */ React.createElement(
           "input",
           {
             id: "cc-sample-data",
@@ -3763,10 +7251,15 @@ System.register(['react', '@grafana/data'], (function (exports) {
         const rawPath = props && props.path || (typeof window !== "undefined" ? window.location.pathname : "");
         const path = String(rawPath).split("?")[0].split("#")[0];
         const initialConfig = normalizeConfig(props?.meta?.jsonData || void 0);
+        let page;
         if (/\/servers\/?$/.test(path)) {
-          return /* @__PURE__ */ React.createElement(ServerListPage, { query: props && props.query, initialConfig });
+          page = /* @__PURE__ */ React.createElement(ServerListPage, { query: props && props.query, initialConfig });
+        } else if (/\/data-center\/?$/.test(path)) {
+          page = /* @__PURE__ */ React.createElement(DataCenterPage, { initialConfig });
+        } else {
+          page = /* @__PURE__ */ React.createElement(CommandCenterPage, { initialConfig });
         }
-        return /* @__PURE__ */ React.createElement(CommandCenterPage, { initialConfig });
+        return /* @__PURE__ */ React.createElement(ErrorBoundary, { key: path }, page);
       }
       const plugin = exports("plugin", new AppPlugin().setRootPage(AppRoot).addConfigPage({
         id: "zabbix",

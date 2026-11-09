@@ -74,6 +74,44 @@ export interface LiveResult {
   transport: ZabbixTransport;
 }
 
+// Freshness must not depend on the browser's clock. A workstation whose clock
+// runs fast (or behind) would mark every host stale even though Zabbix is
+// delivering data every minute. Instead, "now" is the newest item clock the
+// API just returned: a host whose newest item lags that reference has stopped
+// reporting. If the whole estate stops advancing while the API still answers,
+// every host is marked no-data after this many minutes. The elapsed time is
+// measured with performance.now(), so a skewed clock cannot affect it.
+const ESTATE_FROZEN_MINUTES = 15;
+let estateAnchorClock = 0;
+let estateAnchorAt = 0;
+let estateFrozen = false;
+
+function zabbixReferenceNow(items: ZabbixItem[]): number {
+  let newest = 0;
+  for (const item of items) {
+    const clock = parseInt(item.lastclock || '0', 10) || 0;
+    if (clock > newest) {
+      newest = clock;
+    }
+  }
+  if (newest <= 0) {
+    // No clocks at all (nothing monitored yet): fall back to the local clock.
+    return Math.floor(Date.now() / 1000);
+  }
+  const mono =
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+  if (newest > estateAnchorClock) {
+    estateAnchorClock = newest;
+    estateAnchorAt = mono;
+    estateFrozen = false;
+  } else if (estateAnchorAt > 0 && (mono - estateAnchorAt) / 60000 > ESTATE_FROZEN_MINUTES) {
+    estateFrozen = true;
+  }
+  return newest;
+}
+
 const SEVERITY_GROUP: Record<number, SeverityGroup> = {
   0: 'Info',
   1: 'Info',
@@ -92,13 +130,22 @@ const SEVERITY_LABEL: Record<number, Severity> = {
   5: 'Critical',
 };
 
-function pad(n: number): string {
-  return n < 10 ? `0${n}` : String(n);
-}
-
+// The dashboard presents Singapore time everywhere (the header clock and sync
+// labels are formatted for Asia/Singapore). Format problem start times the same
+// way so they cannot disagree with the header on a workstation set to another
+// time zone.
 function timeLabel(clockSec: number): string {
-  const d = new Date(clockSec * 1000);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Singapore',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(clockSec * 1000));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
 }
 
 function durationLabel(minutes: number): string {
@@ -154,8 +201,13 @@ function normalizeTier(value: string | undefined): Tier {
   return 'Tier 3';
 }
 
+const IBM_I_PATTERN = /ibm\s*i\b|as\/?400|os\/?400|i5\/os|iseries/i;
+
 function osFromInventory(host: ZabbixHost): string {
   const text = `${host.inventory?.os || ''} ${host.inventory?.os_full || ''}`;
+  if (IBM_I_PATTERN.test(text)) {
+    return 'IBM i';
+  }
   if (/windows/i.test(text)) {
     return 'Windows';
   }
@@ -168,6 +220,34 @@ function osFromInventory(host: ZabbixHost): string {
   return 'Linux';
 }
 
+/**
+ * IBM i hosts commonly have no inventory OS field. The AS/400 agent emulator
+ * exposes as400.* keys, and system.uname reports OS/400 or IBM i, so use those
+ * as a second signal.
+ */
+function osFromItems(items: ZabbixItem[]): string | null {
+  if (items.some((item) => /^as400\./i.test(item.key_))) {
+    return 'IBM i';
+  }
+  const uname = items.find((item) => item.key_ === 'system.uname');
+  if (uname && IBM_I_PATTERN.test(uname.lastvalue || '')) {
+    return 'IBM i';
+  }
+  return null;
+}
+
+/** Aggregate CPU key from the AS/400 agent emulator: proc.cpu.util[,,total,,,]. */
+function isAggregateProcCpu(key: string): boolean {
+  if (!/^proc\.cpu\.util\[/i.test(key)) {
+    return false;
+  }
+  const args = key.slice(key.indexOf('[') + 1, -1).split(',');
+  return (
+    (args[0] || '').trim() === '' &&
+    args.some((arg) => arg.trim().toLowerCase() === 'total')
+  );
+}
+
 function numeric(value: string | undefined): number | null {
   if (value === undefined || value === null || value === '') {
     return null;
@@ -176,7 +256,7 @@ function numeric(value: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function metricForHost(items: ZabbixItem[]): {
+function metricForHost(items: ZabbixItem[], nowSec: number): {
   cpu: number;
   memory: number;
   disk: number;
@@ -196,6 +276,18 @@ function metricForHost(items: ZabbixItem[]): {
   let diskItem: string | undefined;
   let lastClock = 0;
 
+  // IBM i fallbacks: the AS/400 agent emulator exposes proc.cpu.util[,,total,,,]
+  // instead of system.cpu.util, and SNMP templates may expose one
+  // hrProcessorLoad item per core. The aggregate key wins when both exist.
+  let aggregateCpu: number | null = null;
+  let aggregateCpuItem: string | undefined;
+  let cpuFallbackSum = 0;
+  let cpuFallbackCount = 0;
+  let cpuFallbackItem: string | undefined;
+  let memAvailable: number | null = null;
+  let memFree: number | null = null;
+  let memTotal: number | null = null;
+
   for (const item of items) {
     const key = item.key_ || '';
     const value = numeric(item.lastvalue);
@@ -209,27 +301,71 @@ function metricForHost(items: ZabbixItem[]): {
     if (key === 'system.cpu.util') {
       cpu = value;
       cpuItem = item.itemid;
+    } else if (isAggregateProcCpu(key)) {
+      if (aggregateCpu === null) {
+        aggregateCpu = value;
+        aggregateCpuItem = item.itemid;
+      }
+    } else if (/hrProcessorLoad/i.test(key)) {
+      cpuFallbackSum += value;
+      cpuFallbackCount += 1;
+      cpuFallbackItem = item.itemid;
     } else if (key === 'vm.memory.util' || key === 'vm.memory.utilization') {
       memory = value;
       memItem = item.itemid;
     } else if (key === 'vm.memory.size[pavailable]' && memory === null) {
       memory = Math.max(0, 100 - value);
       memItem = item.itemid;
-    } else if (/^vfs\.fs\.(dependent\.)?size\[[^\]]*pused\]$/.test(key)) {
+    } else if (key === 'vm.memory.size[pfree]' && memory === null) {
+      memory = Math.max(0, 100 - value);
+      memItem = item.itemid;
+    } else if (key === 'vm.memory.size[available]') {
+      memAvailable = value;
+    } else if (key === 'vm.memory.size[free]') {
+      memFree = value;
+    } else if (key === 'vm.memory.size[total]') {
+      memTotal = value;
+    } else if (
+      /^vfs\.fs\.(dependent\.)?size\[[^\]]*pused[^\]]*\]$/i.test(key) ||
+      /^as400\.disk\.size\[[^\]]*pused[^\]]*\]$/i.test(key)
+    ) {
       if (disk === null || value > disk) {
         disk = value;
         diskItem = item.itemid;
       }
-    } else if (/^net\.if\.in\[[^\]]*\]$/.test(key) && !/errors|dropped|collisions/i.test(key)) {
+    } else if (
+      (/^net\.if\.in\[[^\]]*\]$/i.test(key) ||
+        (/^if(HC)?InOctets\[/i.test(key) && /bps/i.test(item.units || ''))) &&
+      !/errors|dropped|collisions/i.test(key)
+    ) {
       netIn += value;
       sawNet = true;
-    } else if (/^net\.if\.out\[[^\]]*\]$/.test(key) && !/errors|dropped|collisions/i.test(key)) {
+    } else if (
+      (/^net\.if\.out\[[^\]]*\]$/i.test(key) ||
+        (/^if(HC)?OutOctets\[/i.test(key) && /bps/i.test(item.units || ''))) &&
+      !/errors|dropped|collisions/i.test(key)
+    ) {
       netOut += value;
       sawNet = true;
     }
   }
 
-  const lastSeenMin = lastClock > 0 ? Math.max(0, Math.round((Date.now() / 1000 - lastClock) / 60)) : 9999;
+  if (cpu === null && aggregateCpu !== null) {
+    cpu = aggregateCpu;
+    cpuItem = aggregateCpuItem;
+  } else if (cpu === null && cpuFallbackCount > 0) {
+    cpu = cpuFallbackSum / cpuFallbackCount;
+    cpuItem = cpuFallbackItem;
+  }
+  if (memory === null && memTotal !== null && memTotal > 0) {
+    if (memAvailable !== null) {
+      memory = Math.max(0, 100 - (memAvailable / memTotal) * 100);
+    } else if (memFree !== null) {
+      memory = Math.max(0, 100 - (memFree / memTotal) * 100);
+    }
+  }
+
+  const lastSeenMin = lastClock > 0 ? Math.max(0, Math.round((nowSec - lastClock) / 60)) : 9999;
   // Assume a 1 Gbps access port when converting interface bit rates to a percentage.
   const network = sawNet ? Math.min(100, ((netIn + netOut) / 1e9) * 100) : 0;
 
@@ -320,6 +456,10 @@ export async function fetchZabbixData(): Promise<LiveResult> {
     versionPromise,
   ]);
 
+  // The reference clock for all freshness and duration arithmetic comes from
+  // the item timestamps Zabbix just returned, not from the browser.
+  const now = zabbixReferenceNow(itemsRaw);
+
   const itemsByHost = new Map<string, ZabbixItem[]>();
   for (const item of itemsRaw) {
     const list = itemsByHost.get(item.hostid) || [];
@@ -347,9 +487,15 @@ export async function fetchZabbixData(): Promise<LiveResult> {
     }
   }
 
+  const metricsByHost = new Map<string, ReturnType<typeof metricForHost>>();
+  for (const zh of hostsRaw) {
+    metricsByHost.set(zh.hostid, metricForHost(itemsByHost.get(zh.hostid) || [], now));
+  }
+
   const hosts: Host[] = hostsRaw.map((zh, index) => {
     const groups = (zh.groups || []).map((g) => g.name);
-    const metrics = metricForHost(itemsByHost.get(zh.hostid) || []);
+    const hostItems = itemsByHost.get(zh.hostid) || [];
+    const metrics = metricsByHost.get(zh.hostid) || metricForHost(hostItems, now);
     const maintenance = zh.maintenance_status === '1' || maintenanceHostIds.has(zh.hostid);
     const unavailable = zh.available === '2' || (zh.interfaces || []).some((i) => i.available === '2');
     const severityNum = maxSeverityByHost.get(zh.hostid) || 0;
@@ -359,7 +505,9 @@ export async function fetchZabbixData(): Promise<LiveResult> {
     let dataState: Host['dataState'] = 'upToDate';
     if (!metrics.hasItems) {
       dataState = 'notMonitored';
-    } else if (metrics.lastSeenMin > 10) {
+    } else if (estateFrozen || metrics.lastSeenMin > 10) {
+      // estateFrozen: collection has stopped across the whole estate even
+      // though the API still answers, so no host has fresh data.
       dataState = 'noData';
     } else if (metrics.lastSeenMin > 5) {
       dataState = 'stale';
@@ -383,7 +531,7 @@ export async function fetchZabbixData(): Promise<LiveResult> {
       environment: normalizeEnvironment(tagValue(zh.tags, ['environment', 'env']), groups),
       hostGroup: groups[0] || 'Ungrouped',
       tier: normalizeTier(tagValue(zh.tags, ['tier', 'system_tier', 'system tier'])),
-      os: osFromInventory(zh),
+      os: osFromItems(hostItems) || osFromInventory(zh),
       businessService: tagValue(zh.tags, ['business_service', 'business service', 'service']) || 'Unassigned',
       health,
       connectivity: unavailable ? 'unavailable' : 'available',
@@ -401,7 +549,6 @@ export async function fetchZabbixData(): Promise<LiveResult> {
   });
 
   const hostByHostname = new Map(hosts.map((h) => [h.hostname, h]));
-  const now = Date.now() / 1000;
 
   const problems: Problem[] = problemsRaw.map((zp, index) => {
     const trigger = triggerById.get(zp.objectid);
@@ -466,7 +613,7 @@ export async function fetchZabbixData(): Promise<LiveResult> {
 
   const metricItemByHost = new Map<string, { cpu?: string; memory?: string; disk?: string }>();
   for (const zh of hostsRaw) {
-    metricItemByHost.set(zh.host, metricForHost(itemsByHost.get(zh.hostid) || []).itemIds);
+    metricItemByHost.set(zh.host, metricsByHost.get(zh.hostid)?.itemIds || {});
   }
   const historyIds = new Set<string>();
   for (const row of topSorted) {
@@ -545,7 +692,7 @@ export async function fetchZabbixData(): Promise<LiveResult> {
   return {
     data,
     version: version || 'Unknown',
-    fetchedAt: new Date(),
+    fetchedAt: new Date(now * 1000),
     transport: config.transport,
   };
 }

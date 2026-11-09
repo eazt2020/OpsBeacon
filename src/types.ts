@@ -117,6 +117,31 @@ export interface HostDetail {
   note: string;
 }
 
+export type HistoryMetric = 'cpu' | 'memory' | 'disk' | 'network';
+export type HistoryRangeKey = '6h' | '24h' | '7d' | '30d' | '90d' | '6m';
+
+export interface HistoryPoint {
+  /** Unix timestamp in seconds. */
+  t: number;
+  v: number;
+}
+
+export interface FilesystemHistory {
+  mount: string;
+  points: HistoryPoint[];
+}
+
+export interface HostHistory {
+  range: HistoryRangeKey;
+  from: number;
+  to: number;
+  series: Partial<Record<HistoryMetric, HistoryPoint[]>>;
+  filesystems: FilesystemHistory[];
+  source: 'sample' | 'live';
+  partial?: boolean;
+  note: string;
+}
+
 export interface FleetAverage {
   cpu: number;
   memory: number;

@@ -30,10 +30,10 @@ const TIER_SUBTITLE: Record<Tier, string> = {
 };
 
 const OS_POOL: Array<[string, number]> = [
-  ['Linux', 70],
-  ['Windows', 18],
-  ['AIX', 6],
-  ['Solaris', 6],
+  ['RHEL', 62],
+  ['Windows', 20],
+  ['Solaris', 10],
+  ['AS400', 8],
 ];
 
 const CRITICAL_PROBLEMS = [
@@ -110,9 +110,9 @@ const ENV_SPECS: Array<{
     flags: { unavailable: 8, maintenance: 12, stale: 8, warning: 13, critical: 15 },
     dataStates: { notMonitored: 5, noData: 8, stale: 16 },
     cpu: { critical: 18, warning: 60 },
-    memory: { critical: 24, warning: 84 },
-    disk: { critical: 32, warning: 100 },
-    network: { critical: 10, warning: 40 },
+    memory: { critical: 114, warning: 365 },
+    disk: { critical: 513, warning: 55 },
+    network: { critical: 20, warning: 63 },
   },
   {
     env: 'DR',
@@ -131,9 +131,9 @@ const ENV_SPECS: Array<{
     flags: { unavailable: 6, maintenance: 8, stale: 5, warning: 8, critical: 10 },
     dataStates: { notMonitored: 3, noData: 5, stale: 10 },
     cpu: { critical: 12, warning: 36 },
-    memory: { critical: 16, warning: 52 },
-    disk: { critical: 20, warning: 60 },
-    network: { critical: 7, warning: 26 },
+    memory: { critical: 72, warning: 231 },
+    disk: { critical: 324, warning: 35 },
+    network: { critical: 13, warning: 40 },
   },
   {
     env: 'UAT',
@@ -150,9 +150,9 @@ const ENV_SPECS: Array<{
     flags: { unavailable: 4, maintenance: 5, stale: 3, warning: 6, critical: 6 },
     dataStates: { notMonitored: 2, noData: 3, stale: 6 },
     cpu: { critical: 8, warning: 28 },
-    memory: { critical: 12, warning: 40 },
-    disk: { critical: 16, warning: 50 },
-    network: { critical: 5, warning: 20 },
+    memory: { critical: 62, warning: 200 },
+    disk: { critical: 281, warning: 30 },
+    network: { critical: 11, warning: 35 },
   },
 ];
 
@@ -187,35 +187,31 @@ function trend(base: number, seed: number): number[] {
   );
 }
 
-function makeTopServers(): TopServerRow[] {
-  const rows: Array<[string, Environment, Tier, number, number, number, string]> = [
-    ['core-bank-01', 'PROD', 'Tier 1', 98, 92, 81, 'Core Banking'],
-    ['pay-batch-02', 'PROD', 'Tier 1', 96, 88, 76, 'Payment Gateway'],
-    ['app-core-03', 'PROD', 'Tier 2', 94, 85, 89, 'Other Services'],
-    ['db-uat-01', 'UAT', 'Tier 2', 91, 93, 72, 'Other Services'],
-    ['web-portal-01', 'PROD', 'Tier 2', 88, 78, 84, 'Internet Banking'],
-    ['rhdl-app-15', 'PROD', 'Tier 3', 86, 72, 68, 'Other Services'],
-    ['app-dev-06', 'UAT', 'Tier 3', 84, 69, 74, 'Other Services'],
-    ['integ-srv-02', 'PROD', 'Tier 3', 82, 77, 66, 'Core Banking'],
-    ['rhel-dr-07', 'DR', 'Tier 3', 79, 71, 62, 'Other Services'],
-    ['app-uat-09', 'UAT', 'Tier 3', 79, 68, 65, 'Other Services'],
-  ];
-  return rows.map(([hostname, environment, tier, cpu, memory, disk, businessService], i) => ({
-    rank: i + 1,
-    hostname,
-    environment,
-    tier,
-    os: 'Linux',
-    businessService,
-    cpu,
-    memory,
-    disk,
-    trends: {
-      cpu: trend(cpu, 100 + i),
-      memory: trend(memory, 200 + i),
-      disk: trend(disk, 300 + i),
-    },
-  }));
+/**
+ * Top servers are drawn from the generated inventory so every hostname in the
+ * panel exists and can be opened in the host-detail drawer.
+ */
+function makeTopServers(hosts: Host[]): TopServerRow[] {
+  return hosts
+    .slice()
+    .sort((a, b) => Math.max(b.cpu, b.memory, b.disk) - Math.max(a.cpu, a.memory, a.disk))
+    .slice(0, 10)
+    .map((host, i) => ({
+      rank: i + 1,
+      hostname: host.hostname,
+      environment: host.environment,
+      tier: host.tier,
+      os: host.os,
+      businessService: host.businessService,
+      cpu: host.cpu,
+      memory: host.memory,
+      disk: host.disk,
+      trends: {
+        cpu: trend(host.cpu, 100 + i),
+        memory: trend(host.memory, 200 + i),
+        disk: trend(host.disk, 300 + i),
+      },
+    }));
 }
 
 /** Empty dataset used while live data loads when sample data is disabled. */
@@ -397,18 +393,18 @@ export function buildSampleData(): SampleData {
     });
     assignMetric(envHosts, 'memory', spec.memory, {
       critical: [90, 99],
-      warning: [72, 89],
-      normal: [15, 65],
+      warning: [70, 89],
+      normal: [40, 69],
     });
     assignMetric(envHosts, 'disk', spec.disk, {
-      critical: [90, 99],
-      warning: [75, 89],
-      normal: [15, 69],
+      critical: [94, 99],
+      warning: [70, 89],
+      normal: [45, 69],
     });
     assignMetric(envHosts, 'network', spec.network, {
       critical: [90, 99],
-      warning: [70, 85],
-      normal: [5, 42],
+      warning: [70, 89],
+      normal: [48, 69],
     });
 
     hosts.push(...envHosts);
@@ -427,23 +423,24 @@ export function buildSampleData(): SampleData {
 
   criticalHosts.forEach((h, i) => {
     const template = pick(CRITICAL_PROBLEMS);
-    const highest = Math.max(h.cpu, h.memory, h.disk);
-    let problem = template.text;
-    let current = `${highest}%`;
-    let threshold = template.threshold;
-    if (highest === h.cpu) {
-      problem = 'CPU utilization is too high';
-      current = `${h.cpu}%`;
-      threshold = '> 90%';
-    } else if (highest === h.memory) {
-      problem = 'Memory utilization is too high';
-      current = `${h.memory}%`;
-      threshold = '> 90%';
-    } else {
-      problem = 'Filesystem /var is full';
-      current = `${h.disk}%`;
-      threshold = '> 90%';
+    // Disk runs hot across the fleet, so deriving the problem from the single
+    // highest metric would label nearly every critical host with the same
+    // filesystem issue. Pick randomly among the metrics that are actually
+    // breaching so the queue stays varied while matching each host's data.
+    const breaching: Array<{ text: string; value: number }> = [];
+    if (h.cpu >= 90) {
+      breaching.push({ text: 'CPU utilization is too high', value: h.cpu });
     }
+    if (h.memory >= 90) {
+      breaching.push({ text: 'Memory utilization is too high', value: h.memory });
+    }
+    if (h.disk >= 90) {
+      breaching.push({ text: 'Filesystem /var is full', value: h.disk });
+    }
+    const chosen = breaching.length > 0 ? pick(breaching) : null;
+    let problem = chosen ? chosen.text : template.text;
+    let current = chosen ? `${chosen.value}%` : `${Math.max(h.cpu, h.memory, h.disk)}%`;
+    let threshold = chosen ? '> 90%' : template.threshold;
     const minutesAgo = randInt(1, 120);
     problems.push({
       id: problemId++,
@@ -602,12 +599,12 @@ export function buildSampleData(): SampleData {
     problems,
     businessServices,
     drComponents,
-    topServers: makeTopServers(),
+    topServers: makeTopServers(hosts),
     utilization: {
       cpu: { avg: 36, critical: 38, warning: 124, normal: 1106 },
-      memory: { avg: 48, critical: 52, warning: 176, normal: 1040 },
-      disk: { avg: 52, critical: 68, warning: 210, normal: 2481 },
-      network: { avg: 28, critical: 22, warning: 86, normal: 2345 },
+      memory: { avg: 78, critical: 248, warning: 796, normal: 224 },
+      disk: { avg: 94, critical: 1118, warning: 120, normal: 30 },
+      network: { avg: 62, critical: 44, warning: 138, normal: 1086 },
     },
     kpiDeltas: {
       available: '▲ +7 (24h)',

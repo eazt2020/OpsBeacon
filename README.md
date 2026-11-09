@@ -2,7 +2,7 @@
 
 **Infrastructure Operations Command Center for Grafana and Zabbix**
 
-[![Version](https://img.shields.io/badge/version-0.8.1-blue.svg)](#release-081)
+[![Version](https://img.shields.io/badge/version-0.9.38-blue.svg)](#release-0938)
 [![Grafana](https://img.shields.io/badge/Grafana-%E2%89%A511.6.0-orange.svg)](https://grafana.com)
 [![Zabbix](https://img.shields.io/badge/Zabbix-7.0-red.svg)](https://www.zabbix.com)
 [![License](https://img.shields.io/badge/license-GPL--3.0--only-green.svg)](LICENSE)
@@ -17,7 +17,7 @@ is configured on the plugin's **Zabbix connection** tab.
 | --- | --- |
 | **Plugin ID** | `acme-command-center-app` |
 | **Display name** | Infrastructure Command Center |
-| **Version** | 0.8.1 |
+| **Version** | 0.9.38 |
 | **Grafana** | >= 11.6.0 |
 | **Zabbix** | 7.0 (JSON-RPC API) |
 | **License** | GPL-3.0-only |
@@ -33,15 +33,144 @@ is configured on the plugin's **Zabbix connection** tab.
 These screenshots use the deterministic sample dataset, so no Zabbix connection is required
 to explore the interface.
 
-## Release 0.8.1
+## Release 0.9.38
 
-- Fixed stale SAMPLE-mode URL filters hiding live hosts after the sample dataset was
-  disabled; those filters are now ignored when sample data is off.
-- Added a `NO SERVERS MATCH FILTERS` banner with a **Clear filters** action as a safety net.
-- Zabbix address, transport and authentication are plugin settings, so the same build can
-  target a remote Zabbix.
-- Added the **Server inventory** page, KPI drill-downs, per-server drawer and panel row
-  drill-downs.
+- Fixed live hosts being shown as **Stale / No Data** while Zabbix was delivering data
+  every minute. Data freshness was measured with the browser's clock; on a workstation
+  whose clock ran about 12 hours fast, every item looked more than 10 minutes old, so the
+  Zabbix server was excluded from **Available** and its problem durations read `13h 35m`
+  instead of about an hour. Freshness and durations are now measured against the newest
+  item timestamp Zabbix itself returns. A host is stale when its data lags the estate by
+  5–10 minutes (no data beyond 10), and if the whole estate stops advancing for 15 minutes
+  every host is shown as no data — the elapsed check uses a monotonic timer, so a wrong
+  system clock cannot affect it.
+- Problem **Time** values are now formatted in Asia/Singapore like the header clock,
+  instead of the workstation's own time zone.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.37
+
+- Data Center Ops now lays its eight KPIs out in eight equal columns, so the row
+  stretches edge to edge like the panels below it instead of leaving an empty slot
+  where the removed stale tile used to sit.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.36
+
+- Removed the **STALE / NO DATA** KPI tile from Data Center Ops, leaving it with eight
+  fleet KPIs. The stale-data value is still tracked by the shared data hook and remains
+  visible on the Command Center.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.35
+
+- Fixed the dashboards (Command Center and Data Center Ops) going blank after being left
+  open for a while. The translucent panels no longer use `backdrop-filter` over the moving
+  aurora background, the aurora orbs no longer carry a large `blur()` filter, and the
+  alert-card border sheen is static. Those effects forced the browser to re-blur and
+  re-rasterise the whole page every frame, which eventually exhausted the GPU process and
+  left the tab painting nothing on wall displays.
+- Live refresh cycles no longer stack: if a Zabbix response is slower than the configured
+  interval, the next tick is skipped instead of starting a second full fetch, so a
+  dashboard left open for hours cannot accumulate in-flight requests and memory.
+- Added a render error boundary around each dashboard page. If a render exception ever
+  occurs, the page shows a readable error card with **Reload dashboard** instead of
+  unmounting into a blank page.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.34
+
+- Data Center Ops now counts only **Warning and Critical** problems as unacknowledged
+  (acknowledged problems are handled, Info items are informational). The **UNACKNOWLEDGED**
+  KPI equals **WARNING + CRITICAL** exactly, and the Unacknowledged Problems panel and
+  marquee use the same set. The panel no longer shows an Info tab.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.33
+
+- In Data Center Ops, the **WARNING** and **CRITICAL** KPI panels now count only
+  unacknowledged problems by severity, with their subtitle showing the share of the
+  unacknowledged problem set. They now agree with the **UNACKNOWLEDGED** panel and the
+  Unacknowledged Problems table. The Command Center is unchanged.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.32
+
+- The **LIVE PROBLEMS** spacer is now a full viewport-width blank sweep, replacing the
+  120 px gap. Each list is rendered once per loop, then the strip stays completely empty
+  until the list re-enters — a single problem now gets a clean, full-width pause instead of
+  appearing to repeat back to back.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.31
+
+- The **LIVE PROBLEMS** marquee on both dashboards now leaves a blank gap before looping
+  back to its first problem, so a repeated list — especially a single problem — cannot be
+  mistaken for extra rows.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.30
+
+- Added the **LIVE PROBLEMS** marquee to Data Center Ops, directly under the header. It
+  behaves like the Command Center marquee — severity-ranked, constant reading speed,
+  clickable hostnames — but lists only unacknowledged problems, matching the DCO
+  Unacknowledged Problems panel.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.29
+
+- Moved the **Servers in Maintenance** panel to the right of Production and Disaster
+  Recovery, in the same row. All three panels stretch to a common height, the maintenance
+  list scrolls inside its card, and the Business Service and OS columns are hidden in the
+  narrower column. The row stacks on screens narrower than 1200 px.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.28
+
+- Added a **Servers in Maintenance** panel to Data Center Ops. It lists every host in a
+  Zabbix maintenance window that matches the active filters, with environment, tier,
+  business service, OS, last data age and a maintenance state badge; hostnames open the
+  per-server statistics drawer.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.27
+
+- The Data Center Ops problem panel is now **Unacknowledged Problems**: it lists only
+  problems that have not been acknowledged, and its severity tabs, panel total and
+  "Showing X of Y" counter are computed from that filtered set. The main Command Center
+  still shows all active problems.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.26
+
+- The Data Center Ops **Production** and **Disaster Recovery** panels now use the same
+  group panels as the Infrastructure Command Center — environment header with totals, the
+  healthy/warning/critical/other summary, Tier 1–3 lanes with per-tier counts, the
+  clickable host hive grid and the status legend.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.25
+
+- Dashboards are now **fully independent**. Every open dashboard or tab runs its own
+  refresh timer and makes its own Zabbix request; nothing is shared, cached or locked in
+  browser storage, so opening Data Center Ops in a second tab gives it its own refresh
+  cycle immediately.
+- Removed the cross-tab snapshot cache, the fetch lock and the Web Locks coordination
+  introduced in 0.9.22–0.9.24, along with their leftover `localStorage` keys.
+- See [CHANGELOG.md](CHANGELOG.md) for details.
+
+## Release 0.9.23
+
+- Added the **Data Center Ops** dashboard: nine fleet KPI panels, Production and Disaster
+  Recovery environment panels and the Active Problems table.
+- Production and Disaster Recovery use the same clickable host **hive grid** as the
+  Infrastructure Command Center, with each square opening that server's statistics drawer.
+- Live refreshes run in the background: the previous snapshot stays on screen and the header
+  stays in its LIVE state, and the header clock no longer re-renders the whole page every
+  second.
+- Server Inventory remembers which dashboard opened it: drill-downs from Data Center Ops
+  show a **← Data Center Ops** back link, while Command Center drill-downs return to the
+  Command Center.
 - See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Overview
@@ -50,6 +179,11 @@ to explore the interface.
   DISASTER RECOVERY and DEVELOPMENT / UAT columns, with tier lanes inside each column.
 - **Availability KPIs** — available, unavailable, warning, critical, maintenance,
   stale/no-data and active/unacknowledged problem counts.
+- **Data Center Operation Command Center** — a second dashboard (`Data Center Ops`) focused on
+  the data-center view: eight fleet KPIs, Production and Disaster Recovery panels that match
+  the Infrastructure Command Center's environment panels (status summary, Tier 1–3 lanes and
+  clickable host hive grids), the unacknowledged-problem LIVE PROBLEMS marquee, a Servers in
+  Maintenance list and the Unacknowledged Problems table.
 - **Utilisation** — CPU, memory, disk and network donuts computed from Zabbix item values.
 - **Operations panels** — business services, data freshness, top servers with 24-hour
   sparklines, and the active problem table.
@@ -74,7 +208,8 @@ The dashboard is **read-only**. It never acknowledges, closes or creates anythin
 ## Quick start
 
 1. Open `http://<grafana-host>/grafana/a/acme-command-center-app/command-center`.
-   Click any KPI tile to drill into the matching server list.
+   Click any KPI tile to drill into the matching server list. The **Data Center Ops** page
+   (`/a/acme-command-center-app/data-center`) provides the data-center-focused view.
 2. Open `Administration → Plugins → Infrastructure Command Center → Zabbix connection`
    (or `http://<grafana-host>/grafana/plugins/acme-command-center-app?page=zabbix`) and
    configure the transport, Zabbix address and authentication (API token or
@@ -97,6 +232,31 @@ between SAMPLE and LIVE in the header. When it is cleared, Grafana-hosted pages 
 live-only: the SAMPLE switch is replaced by a `LIVE ONLY` badge, sample drill-down links
 fall back to live data, and the page always opens in live mode.
 
+Each open dashboard or tab refreshes independently: it runs its own timer and makes its own
+Zabbix request. No live data is shared between tabs, so opening a second dashboard starts its
+own refresh cycle immediately and one dashboard can never delay or reuse another's data.
+Nothing is written to browser storage by the live poller; the API token and password are
+never stored there.
+
+## Data Center Operation Command Center
+
+The **Data Center Ops** page (`/a/acme-command-center-app/data-center`) uses the same data
+sources and filters as the main Command Center, with a data-center-focused layout:
+
+| Panel | Content |
+| --- | --- |
+| **LIVE PROBLEMS marquee** | The same scrolling problem strip as the Command Center, directly under the header, fed only by unacknowledged Warning and Critical problems, with a full-width blank sweep before each loop restart. Hostnames open the per-server statistics drawer. |
+| **Top KPI row** | Total Servers, Available, Unavailable, Warning, Critical, Total Problems, Unacknowledged, In Maintenance. **Warning** and **Critical** count only unacknowledged problems by severity and show their share of the unacknowledged set; **Unacknowledged** is exactly Warning + Critical (Info items are informational and not counted). The tiles drill into the matching server inventory. |
+| **Environment row** | Production, Disaster Recovery and Servers in Maintenance sit side by side and share a row height; the two environment panels are the same panels as the Infrastructure Command Center. |
+| **Production** | The same environment panel as the Infrastructure Command Center: name and total, the healthy / warning / critical / other summary, Tier 1–3 lanes with per-tier status counts, the **hive grid** of clickable host squares and the status legend. |
+| **Disaster Recovery** | The same panel scoped to the DR environment. |
+| **Servers in Maintenance** | Every host in a Zabbix maintenance window that matches the active filters, sorted by environment and tier, with hostname, environment, tier, last data age and a maintenance badge; the Business Service and OS columns are hidden in the three-column row. Hostnames open the per-server statistics drawer, the list scrolls in its card, and the panel total matches the **In Maintenance** KPI. |
+| **Unacknowledged Problems** | The severity-tabbed problem table, limited to **Warning and Critical problems that have not been acknowledged** (no Info tab); tab counts and the panel total match the **UNACKNOWLEDGED** KPI, and hostnames open the per-server statistics drawer. |
+
+Environment status counts partition the environment total; the top **Available** KPI follows
+the same definition as the main dashboard (not unavailable, not in maintenance and not
+stale), so Warning and Critical hosts remain part of Available.
+
 ## How each panel maps to Zabbix
 
 Everything the dashboard shows is derived from four Zabbix calls: `host.get`,
@@ -112,7 +272,7 @@ reads **host groups, host tags, trigger priorities and item keys directly**.
 | **Environment** (PROD / DR / DEV-UAT) | host tag `environment` or `env`; value matched case-insensitively: contains `dr`/`disaster` → DR, `uat`/`dev`/`test`/`qa` → UAT, `prod`/`prd` → PROD | Inferred from host-group names using the same words; otherwise PROD |
 | **System Tier** | host tag `tier`, `system_tier` or `system tier`: contains `1`/`core`/`critical` → Tier 1, contains `2` → Tier 2 | Tier 3 |
 | **Host Group** | first host group returned by `host.get` | `Ungrouped` |
-| **OS Type** | host inventory `os` / `os_full`: Windows, AIX, Solaris | Linux |
+| **OS Type** | host inventory `os` / `os_full`: Windows, AIX, Solaris, IBM i (`IBM i`, `AS/400`, `OS/400`, `i5/OS`, `iSeries`); otherwise any `as400.*` item or a `system.uname` value containing one of those names marks the host as IBM i | Linux |
 | **Business Service** | host tag `business_service`, `business service` or `service` | `Unassigned` |
 | **Health** | maintenance status first, then host/interface availability, then the highest active trigger priority, then data freshness | healthy |
 | **Data state** | newest item `lastclock` for the host | `notMonitored` when the host has no items |
@@ -132,7 +292,7 @@ Tag values take precedence over host-group names. A tag recipe is in
 | **TOTAL PROBLEMS** | Active `problem.get` rows whose trigger host passes the filters. |
 | **UNACKNOWLEDGED** | Problems with `acknowledged = 0`. |
 | **IN MAINTENANCE** | Host `maintenance_status = 1`, or the host appears in `maintenance.get`. |
-| **STALE / NO DATA** | Newest item clock is 5–10 minutes old (`stale`) or more than 10 minutes old (`noData`). |
+| **STALE / NO DATA** | The host's newest item clock lags the newest item clock in the estate by 5–10 minutes (`stale`) or more than 10 minutes (`noData`). Measured against Zabbix's own item timestamps, not the browser clock. If the whole estate stops advancing for 15 minutes, every host is `noData`. |
 
 Health precedence is maintenance → unavailable → critical → warning → stale → healthy.
 Available deliberately excludes maintenance and stale hosts. The tile counts and the
@@ -174,12 +334,38 @@ filtered hosts.
 
 | Donut | Item key | Rule |
 | --- | --- | --- |
-| **CPU** | `system.cpu.util` | Latest value (%). |
-| **Memory** | `vm.memory.util` or `vm.memory.utilization` | Latest value (%); if only `vm.memory.size[pavailable]` exists, it is shown as `100 − value`. |
-| **Disk** | `vfs.fs.size[<fs>,pused]` or `vfs.fs.dependent.size[<fs>,pused]` | The **highest** used percentage across filesystems wins. |
-| **Network** | `net.if.in[<if>]` + `net.if.out[<if>]` | Summed bit rates converted to a percentage of a **1 Gbps** port (capped at 100 %). Error/dropped/collision keys are ignored. |
+| **CPU** | `system.cpu.util`; then the aggregate `proc.cpu.util[,,total,,,]` from the AS/400 agent emulator; then the average of all `hrProcessorLoad[<cpu>]` SNMP items | Latest value (%). |
+| **Memory** | `vm.memory.util` or `vm.memory.utilization`; then `vm.memory.size[pavailable]`/`[pfree]` (shown as `100 − value`); then `vm.memory.size[available]` or `[free]` divided by `vm.memory.size[total]` | Latest value (%). |
+| **Disk** | `vfs.fs.size[<fs>,pused]`, `vfs.fs.dependent.size[<fs>,pused]` or IBM i `as400.disk.size[<unit>,pused]` | The **highest** used percentage across filesystems/disk units wins. |
+| **Network** | `net.if.in[<if>]` + `net.if.out[<if>]`; SNMP `ifInOctets`/`ifOutOctets` and `ifHCInOctets`/`ifHCOutOctets` when the item units are bit rates | Summed bit rates converted to a percentage of a **1 Gbps** port (capped at 100 %). Error/dropped/collision keys are ignored. |
 
 If a host has no item for a metric, that host contributes **0 %** for it.
+
+### IBM i / AS/400 hosts
+
+OpsBeacon reads IBM i hosts through the same `host.get` / `item.get` pipeline and maps both
+common monitoring routes:
+
+- **AS/400 agent emulator** — the Zabbix community template exposes `proc.cpu.util[,,total,,,]`
+  for aggregate CPU, `vfs.fs.size[<ASP or IFS mount>,pused]` for IFS/ASP usage,
+  `vfs.fs.state` for mount state and `as400.disk.size[<disk unit>,pused]` for disk-unit
+  usage. The `as400.*` keys also identify the host as IBM i when inventory data is missing.
+- **SNMP** — IBM i SNMP agents commonly support SNMPv1 or SNMPv3. CPU falls back to the
+  per-core `hrProcessorLoad` HOST-RESOURCES items (averaged), memory to
+  `vm.memory.size[available|free]` ÷ `vm.memory.size[total]` when a percentage item is not
+  available, disk to the percentage filesystem items, and network to `if*Octets` only when
+  the template stores them as bit rates. The dashboard never depends on `hrSWRunPerf`,
+  which IBM i SNMP agents typically do not implement.
+
+The AS/400 agent-emulator template does not publish RAM items, so memory utilisation on
+those hosts needs the SNMP HOST-RESOURCES items or a custom `vm.memory.size[...]` item;
+without one, memory reads 0 % rather than an invented value. Both the dashboard donuts and
+the server drawer use these fallbacks, including the
+historical charts, which average per-core series and invert/derive memory percentages in
+the same way as the live snapshot. Sample mode inventories hosts as **RHEL**, **Solaris**,
+**Windows** and **AS400**, with IFS-style mounts (`/`, `/QIBM/ProdData`, `/QOpenSys`,
+`/home`) for AS400 hosts, so the layouts and OS filter can be reviewed without a Zabbix
+server.
 
 ### Production / Disaster Recovery / Development-UAT columns
 
@@ -199,19 +385,30 @@ Clicking a host square opens a read-only drawer with:
 - **24-hour sparklines** for CPU, memory and disk. In LIVE mode these are fetched
   on demand from `history.get` for that host's items; in SAMPLE mode they are
   deterministic sample lines and are labelled as such.
+- **Click any utilisation panel** (CPU, memory, disk or network) to open its historical
+  graph. The history view has CPU / Memory / Disk / Network / Filesystems tabs and
+  **6H / 24H / 7D / 30D / 90D / 6M** range filters, a point-to-point line with peak and low
+  markers, axis labels, threshold lines at 70 % and 90 %, and a hover crosshair with a
+  per-series tooltip. The Filesystems tab plots every filesystem on one chart (up to
+  eight mounts, with a colour legend and each mount's latest value).
 - **Filesystem usage** — one bar per filesystem from
-  `vfs.fs.size[<fs>,pused]` / `vfs.fs.dependent.size[<fs>,pused]`, sorted by usage, with
-  the same 70/90 colour bands.
+  `vfs.fs.size[<fs>,pused]` / `vfs.fs.dependent.size[<fs>,pused]`; IBM i hosts also read
+  ASP/disk-unit usage from `as400.disk.size[<unit>,pused]`. Rows are sorted by usage, with
+  the same 70/90 colour bands and a **View filesystem history** link.
 - **Host facts** — health, connectivity, data state, last seen, maintenance, DR role,
   Zabbix host ID and active problem count.
 - **Active problems on this server**, with severity, current value, age and acknowledgement.
 - **Open in server inventory** — jumps to the inventory page pre-filtered to this host
   (`?host=<hostname>`).
 
-The drawer fetches live history and filesystem items only when it is opened; it does not
-add load to the dashboard refresh. If history or item data is unavailable, it falls back
-to the current snapshot and says so. Close with the **×**, **Esc** or by clicking the
-backdrop.
+Ranges up to 24 hours come from `history.get`; multi-day and multi-month ranges come from
+hourly `trend.get` (`value_avg`) and fall back to `history.get` when trends are unavailable.
+Samples are averaged into fixed time buckets, and each item's request is capped at 5,000
+rows. The drawer fetches live history and filesystem items only when the overview or a
+history view is opened; it does not add load to the dashboard refresh. If history or item
+data is unavailable, it falls back to the current snapshot and says so. In the history
+view, **Esc** returns to the overview; from the overview, **Esc**, the **×** or a backdrop
+click closes the drawer.
 
 ### Business Services table
 
@@ -250,8 +447,12 @@ replication health objects; the row links appear automatically once rows with
 ### Data Freshness panel
 
 Counts hosts by data state, based on the **newest item clock of any item returned for the
-host**: up to date ≤ 5 minutes, stale 5–10 minutes, no data > 10 minutes, not monitored when
-no items exist. It is a host-level signal, not a per-metric one.
+host** compared with the newest item clock across the whole estate: up to date ≤ 5 minutes,
+stale 5–10 minutes, no data > 10 minutes, not monitored when no items exist. Using Zabbix's
+own timestamps as the reference means a workstation whose clock is wrong cannot mark every
+host stale. If the newest item in the estate has not advanced for 15 minutes (collection
+stalled while the API still answers), every host is shown as no data. It is a host-level
+signal, not a per-metric one.
 
 ### Top Servers panel
 
@@ -508,6 +709,14 @@ The deployable files are `dist/module.js`, `dist/module.js.map`, `src/plugin.jso
 `/var/lib/grafana/plugins/acme-command-center-app/` as described in
 [Install from the package](#install-from-the-package), using the local paths instead of
 the archive.
+
+### Preview without Grafana
+
+`npm run preview:serve` bundles the dashboard and serves `preview/` on
+`http://localhost:8091/` using the built-in sample dataset. This is a
+development-only harness; it needs no Grafana or Zabbix server. The preview applies a
+larger display scale for readability. Rebuild with `npm run preview` after changing
+`src/`.
 
 ## Repository layout
 

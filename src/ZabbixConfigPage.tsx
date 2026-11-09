@@ -13,6 +13,10 @@ import {
 
 type Status = { tone: 'ok' | 'error' | 'info'; text: string } | null;
 
+/** Logos are embedded in plugin settings, so keep the upload small. */
+const MAX_LOGO_BYTES = 256 * 1024;
+const LOGO_TYPES = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml';
+
 const CFG_CSS = `
 .cc-cfg {
   max-width: 820px;
@@ -88,6 +92,52 @@ const CFG_CSS = `
   padding: 1px 5px;
   border-radius: 2px;
   font-size: 12px;
+}
+.cc-cfg-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 6px 0 4px;
+}
+.cc-cfg-logo-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 56px;
+  padding: 7px;
+  border: 1px dashed var(--border-weak, #34363e);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.cc-cfg-logo-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.cc-cfg-logo-preview span { color: var(--text-color-secondary, #9da5b3); font-size: 11px; }
+.cc-cfg-logo-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.cc-cfg-file {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  margin: 0 !important;
+  padding: 6px 12px;
+  border: 1px solid var(--border-weak, #34363e);
+  border-radius: 4px;
+  background: var(--button-background, #2e3035);
+  color: var(--text-color, #d8d9da);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.cc-cfg-file:hover { border-color: var(--border-medium, #5a5d67); }
+.cc-cfg-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 .cc-cfg-actions {
   display: flex;
@@ -171,6 +221,30 @@ export function ZabbixConfigPage({ plugin }: PluginConfigPageProps<AppPluginMeta
     setStatus(null);
   };
 
+  const onLogoFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+    if (!/^image\/(png|jpe?g|gif|webp|svg\+xml)$/i.test(file.type)) {
+      setStatus({ tone: 'error', text: 'Unsupported logo format. Use PNG, SVG, JPEG, WebP or GIF.' });
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setStatus({
+        tone: 'error',
+        text: `Logo is ${Math.round(file.size / 1024)} KB; the limit is 256 KB.`,
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => patch({ logoUrl: String(reader.result || '') });
+    reader.onerror = () => setStatus({ tone: 'error', text: 'Could not read the selected file.' });
+    reader.readAsDataURL(file);
+  };
+
   const endpoint = useMemo(() => zabbixEndpoint(config, 'api'), [config]);
   const proxyBase = appSubUrl() || '';
 
@@ -178,10 +252,14 @@ export function ZabbixConfigPage({ plugin }: PluginConfigPageProps<AppPluginMeta
     setSaving(true);
     setStatus(null);
     try {
-      await saveZabbixConfig(config);
+      const saved = await saveZabbixConfig(config);
+      setConfig(saved);
+      const adjusted = saved.refreshSeconds !== config.refreshSeconds;
       setStatus({
         tone: 'ok',
-        text: 'Connection settings saved. The dashboard picks them up on its next refresh; reload it to apply a new refresh interval.',
+        text: adjusted
+          ? `Settings saved. The refresh interval was adjusted to ${saved.refreshSeconds} s (allowed range 15–3600 s). The Command Center and Server Inventory apply them on their next load.`
+          : 'Connection settings saved. The Command Center and Server Inventory apply them on their next load; reload an open page to switch to a new refresh interval.',
       });
     } catch (err) {
       setStatus({ tone: 'error', text: `Could not save settings: ${(err as Error).message}` });
@@ -365,6 +443,65 @@ export function ZabbixConfigPage({ plugin }: PluginConfigPageProps<AppPluginMeta
           </p>
         </fieldset>
       )}
+
+      <fieldset>
+        <legend>Branding</legend>
+        <label htmlFor="cc-brand-name">Brand name</label>
+        <input
+          id="cc-brand-name"
+          type="text"
+          maxLength={40}
+          value={config.brandName}
+          onChange={(e) => patch({ brandName: e.target.value })}
+        />
+        <p className="help">Shown in the Command Center and Server Inventory header. Defaults to OPSBEACON.</p>
+
+        <label htmlFor="cc-brand-tagline">Tagline</label>
+        <input
+          id="cc-brand-tagline"
+          type="text"
+          maxLength={80}
+          value={config.brandTagline}
+          onChange={(e) => patch({ brandTagline: e.target.value })}
+        />
+        <p className="help">Displayed after the brand name in the header eyebrow.</p>
+
+        <label htmlFor="cc-logo-file">Logo</label>
+        <div className="cc-cfg-logo">
+          <div className="cc-cfg-logo-preview">
+            {config.logoUrl ? <img src={config.logoUrl} alt="Brand logo preview" /> : <span>No logo</span>}
+          </div>
+          <div className="cc-cfg-logo-actions">
+            <label className="cc-cfg-file" htmlFor="cc-logo-file">
+              Upload logo…
+              <input id="cc-logo-file" type="file" accept={LOGO_TYPES} onChange={onLogoFile} />
+            </label>
+            {config.logoUrl ? (
+              <button type="button" className="secondary" onClick={() => patch({ logoUrl: '' })}>
+                Remove logo
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <p className="help">
+          PNG, SVG, JPEG, WebP or GIF up to 256 KB. The image replaces the default three-bar mark and is
+          contained within a 40 px-high header slot.
+        </p>
+
+        <label htmlFor="cc-logo-url">Or logo URL</label>
+        <input
+          id="cc-logo-url"
+          type="text"
+          placeholder="https://example.com/logo.svg"
+          value={config.logoUrl.startsWith('data:') ? '' : config.logoUrl}
+          onChange={(e) => patch({ logoUrl: e.target.value })}
+        />
+        <p className="help">
+          {config.logoUrl.startsWith('data:')
+            ? 'Currently using an uploaded image embedded in plugin settings. Enter a URL to replace it.'
+            : 'An absolute http(s) URL to an image. Leave blank to use the default mark.'}
+        </p>
+      </fieldset>
 
       <fieldset>
         <legend>Dashboard behaviour</legend>

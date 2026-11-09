@@ -1,6 +1,8 @@
 import React from 'react';
 import { AppPlugin, AppRootProps } from '@grafana/data';
 import { CommandCenterPage } from './CommandCenterPage';
+import { DataCenterPage } from './DataCenterPage';
+import { ErrorBoundary } from './ErrorBoundary';
 import { ServerListPage } from './ServerListPage';
 import { ZabbixConfigPage } from './ZabbixConfigPage';
 import { normalizeConfig } from './data/config';
@@ -16,10 +18,17 @@ function AppRoot(props?: AppRootProps) {
   // Grafana passes the plugin meta (including jsonData) to the app root, so the
   // stored sample-data switch is honoured on the very first render.
   const initialConfig = normalizeConfig(((props as any)?.meta?.jsonData) || undefined);
+  let page: React.ReactNode;
   if (/\/servers\/?$/.test(path)) {
-    return <ServerListPage query={props && props.query} initialConfig={initialConfig} />;
+    page = <ServerListPage query={props && props.query} initialConfig={initialConfig} />;
+  } else if (/\/data-center\/?$/.test(path)) {
+    page = <DataCenterPage initialConfig={initialConfig} />;
+  } else {
+    page = <CommandCenterPage initialConfig={initialConfig} />;
   }
-  return <CommandCenterPage initialConfig={initialConfig} />;
+  // Keyed by route: a crash on one dashboard cannot poison the others, and a
+  // render exception shows the recoverable error card instead of a blank page.
+  return <ErrorBoundary key={path}>{page}</ErrorBoundary>;
 }
 
 export const plugin = new AppPlugin<{}>()

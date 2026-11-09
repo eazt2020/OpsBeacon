@@ -1,6 +1,6 @@
 {
   "name": "opsbeacon",
-  "version": "0.8.1",
+  "version": "0.9.38",
   "private": true,
   "description": "OpsBeacon — Infrastructure Operations Command Center for Grafana and Zabbix",
   "license": "GPL-3.0-only",
@@ -17,11 +17,14 @@
   },
   "scripts": {
     "build": "rollup -c",
-    "preview": "esbuild src/preview.tsx --bundle --outfile=preview/preview.js --loader:.tsx=tsx --jsx=transform --minify"
+    "preview": "esbuild src/preview.tsx --bundle --outfile=preview/preview.js --loader:.tsx=tsx --jsx=transform --minify",
+    "preview:serve": "npm run preview && node preview/server.js"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.3.1",
     "esbuild": "^0.28.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "rollup": "^4.34.8",
     "rollup-plugin-esbuild": "^6.2.1"
   }

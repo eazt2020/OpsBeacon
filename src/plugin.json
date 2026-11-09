@@ -4,8 +4,13 @@
   "name": "Infrastructure Command Center",
   "id": "acme-command-center-app",
   "info": {
-    "keywords": ["zabbix", "infrastructure", "command-center", "operations"],
-    "description": "Operations wall for Zabbix: inventory health, availability, CPU/memory/disk/network utilisation, data freshness, top servers and active problems. Panels are driven directly by Zabbix host groups, host tags (environment, tier, business_service) and standard agent item keys. Every KPI count, Business Services row and DR Readiness row is click-through to a filterable server inventory scoped to that row, and every host square opens a per-server drawer with gauges, 24-hour history, filesystem usage and that host's problems. Includes a deterministic sample dataset, which can be enabled or disabled on the plugin's Zabbix connection tab; when disabled the dashboard is live-only and hides the SAMPLE switch. The live Zabbix server address, transport and authentication (API token or username/password) are also configured there, so the plugin can be installed on any Grafana server and point at a remote Zabbix. Read the Overview tab for the full panel-to-tag mapping.",
+    "keywords": [
+      "zabbix",
+      "infrastructure",
+      "command-center",
+      "operations"
+    ],
+    "description": "Operations wall for Zabbix: inventory health, availability, CPU/memory/disk/network utilisation, data freshness, top servers and active problems. The Data Center Operation Command Center dashboard adds nine fleet KPI panels, Production and Disaster Recovery environment breakdowns with health-mix donuts and tier hive grids, and the active problem table. Panels are driven directly by Zabbix host groups, host tags (environment, tier, business_service) and standard agent item keys. Linux, Windows, AIX, Solaris and IBM i/AS400 hosts are supported, including the AS/400 agent emulator aggregate CPU and disk-unit keys and SNMP HOST-RESOURCES fallbacks for CPU, memory and interfaces. Every KPI count, Business Services row and DR Readiness row is click-through to a filterable server inventory scoped to that row, and every host square opens a per-server drawer with gauges, 24-hour history, filesystem usage and that host's problems; clicking any utilisation panel opens full history charts for CPU, memory, disk, network and every filesystem, with 6-hour, 24-hour, 7-day, 30-day, 90-day and 6-month range filters. Includes a deterministic sample dataset, which can be enabled or disabled on the plugin's Zabbix connection tab; when disabled the dashboard is live-only and hides the SAMPLE switch. The live Zabbix server address, transport and authentication (API token or username/password) are also configured there, so the plugin can be installed on any Grafana server and point at a remote Zabbix. Read the Overview tab for the full panel-to-tag mapping.",
     "author": {
       "name": "Infrastructure Operations"
     },
@@ -14,8 +19,8 @@
       "large": "img/logo.svg"
     },
     "screenshots": [],
-    "version": "0.8.1",
-    "updated": "2026-11-03"
+    "version": "0.9.38",
+    "updated": "2026-11-08"
   },
   "includes": [
     {
@@ -25,6 +30,13 @@
       "role": "Viewer",
       "addToNav": true,
       "defaultNav": true
+    },
+    {
+      "type": "page",
+      "name": "Data Center Ops",
+      "path": "/a/acme-command-center-app/data-center",
+      "role": "Viewer",
+      "addToNav": true
     },
     {
       "type": "page",
