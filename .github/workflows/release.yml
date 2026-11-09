@@ -45,7 +45,7 @@ jobs:
           cp dist/module.js dist/module.js.map "$STAGE/"
           cp src/plugin.json "$STAGE/plugin.json"
           cp README.md "$STAGE/README.md"
-          cp img/logo.svg "$STAGE/img/logo.svg"
+          cp img/logo.png img/logo-small.png "$STAGE/img/"
           (cd release && zip -r "../acme-command-center-app-${VERSION}.zip" acme-command-center-app)
           sha256sum "acme-command-center-app-${VERSION}.zip" > "acme-command-center-app-${VERSION}.zip.sha256"
 
@@ -72,6 +72,9 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          # Re-tagging a published version replaces its release instead of
+          # failing on the existing one.
+          gh release delete "${GITHUB_REF_NAME}" --yes || true
           gh release create "${GITHUB_REF_NAME}" \
             "acme-command-center-app-${VERSION}.zip" \
             "acme-command-center-app-${VERSION}.zip.sha256" \

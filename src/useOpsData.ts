@@ -273,17 +273,43 @@ export function useOpsData(initialConfig?: ZabbixConfig) {
 
   const filtersActive = Object.values(filters).some((v) => v !== ALL);
 
-  const total = filteredHosts.length;
-  const unavailable = filteredHosts.filter((h) => h.connectivity === 'unavailable').length;
-  const maintenance = filteredHosts.filter((h) => h.maintenance).length;
-  const stale = filteredHosts.filter((h) => h.stale).length;
-  const warning = filteredHosts.filter((h) => h.severity === 'warning').length;
-  const critical = filteredHosts.filter((h) => h.severity === 'critical').length;
-  const available = filteredHosts.filter(
-    (h) => h.connectivity !== 'unavailable' && !h.maintenance && !h.stale
-  ).length;
-  const totalProblems = filteredProblems.length;
-  const unacknowledged = filteredProblems.filter((p) => !p.ack).length;
+  // The KPI strip touches every host and problem. Counting them in one pass keeps
+  // this off the critical path when the page re-renders for unrelated state such
+  // as opening the host drawer or switching a problem tab.
+  const counts = useMemo(() => {
+    let unavailable = 0;
+    let maintenance = 0;
+    let stale = 0;
+    let warning = 0;
+    let critical = 0;
+    let available = 0;
+    for (const host of filteredHosts) {
+      const down = host.connectivity === 'unavailable';
+      if (down) unavailable += 1;
+      if (host.maintenance) maintenance += 1;
+      if (host.stale) stale += 1;
+      if (host.severity === 'warning') warning += 1;
+      if (host.severity === 'critical') critical += 1;
+      if (!down && !host.maintenance && !host.stale) available += 1;
+    }
+    let unacknowledged = 0;
+    for (const problem of filteredProblems) {
+      if (!problem.ack) unacknowledged += 1;
+    }
+    return {
+      total: filteredHosts.length,
+      unavailable,
+      maintenance,
+      stale,
+      warning,
+      critical,
+      available,
+      totalProblems: filteredProblems.length,
+      unacknowledged,
+    };
+  }, [filteredHosts, filteredProblems]);
+
+  const { total, unavailable, maintenance, stale, warning, critical, available, totalProblems, unacknowledged } = counts;
 
   const utilization = useMemo(() => {
     if (!filtersActive && source === 'sample') {

@@ -1,483 +1,18 @@
 System.register(['react', '@grafana/data'], (function (exports) {
   'use strict';
-  var React, useState, useEffect, useMemo, useRef, AppPlugin;
+  var React, useRef, useState, useLayoutEffect, useEffect, useMemo, AppPlugin;
   return {
     setters: [function (module) {
       React = module.default;
+      useRef = module.useRef;
       useState = module.useState;
+      useLayoutEffect = module.useLayoutEffect;
       useEffect = module.useEffect;
       useMemo = module.useMemo;
-      useRef = module.useRef;
     }, function (module) {
       AppPlugin = module.AppPlugin;
     }],
     execute: (function () {
-
-      const TONE = {
-        blue: { tone: "#2f9bff", bg: "rgba(47, 155, 255, 0.12)" },
-        green: { tone: "#00e676", bg: "rgba(0, 230, 118, 0.12)" },
-        red: { tone: "#ff3d57", bg: "rgba(255, 61, 87, 0.12)" },
-        yellow: { tone: "#ffc107", bg: "rgba(255, 193, 7, 0.12)" },
-        orange: { tone: "#ff8a3d", bg: "rgba(255, 138, 61, 0.12)" },
-        purple: { tone: "#8b5cf6", bg: "rgba(139, 92, 246, 0.12)" },
-        cyan: { tone: "#00d4ff", bg: "rgba(0, 212, 255, 0.12)" },
-        gray: { tone: "#8ea3bf", bg: "rgba(142, 163, 191, 0.10)" }
-      };
-      const GROUP_COLOR = {
-        PROD: "#2f9bff",
-        DR: "#8b5cf6",
-        UAT: "#00d4ff"
-      };
-      const HEALTH_COLOR$1 = {
-        healthy: "#00d47e",
-        warning: "#ffc107",
-        critical: "#ff3b30",
-        stale: "#8f9298",
-        maintenance: "#22d3ee",
-        unavailable: "#a855f7"
-      };
-      const FILTER_KEYS = ["environment", "tier", "hostGroup", "os", "businessService"];
-      const FILTERS_STORAGE_KEY = "opsbeacon-filters-open";
-      function filtersStorageKey() {
-        if (typeof window === "undefined") {
-          return FILTERS_STORAGE_KEY;
-        }
-        return `${FILTERS_STORAGE_KEY}:${window.location.pathname}`;
-      }
-      const fmt$2 = (n) => n.toLocaleString("en-US");
-      function BrandMark({ logoUrl, className }) {
-        return /* @__PURE__ */ React.createElement("div", { className: `cc-logo${logoUrl ? " cc-logo-image" : ""}${className ? ` ${className}` : ""}`, "aria-hidden": "true" }, logoUrl ? /* @__PURE__ */ React.createElement("img", { src: logoUrl, alt: "" }) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { background: "#28a9ff" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#ffb020" } })));
-      }
-      function Icon({ name, size = 16 }) {
-        const common = {
-          width: size,
-          height: size,
-          viewBox: "0 0 24 24",
-          fill: "none",
-          stroke: "currentColor",
-          strokeWidth: 1.8,
-          strokeLinecap: "round",
-          strokeLinejoin: "round"
-        };
-        switch (name) {
-          case "server":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("rect", { x: "3", y: "4", width: "18", height: "6", rx: "1.6" }), /* @__PURE__ */ React.createElement("rect", { x: "3", y: "14", width: "18", height: "6", rx: "1.6" }), /* @__PURE__ */ React.createElement("path", { d: "M7 7h.01M7 17h.01M11 7h.01M11 17h.01" }));
-          case "check":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }), /* @__PURE__ */ React.createElement("path", { d: "m8 12 2.6 2.6L16 9" }));
-          case "x":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }), /* @__PURE__ */ React.createElement("path", { d: "m9 9 6 6M15 9l-6 6" }));
-          case "alert":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M10.3 3.8 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z" }), /* @__PURE__ */ React.createElement("path", { d: "M12 9v4M12 17h.01" }));
-          case "bell":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" }), /* @__PURE__ */ React.createElement("path", { d: "M13.7 21a2 2 0 0 1-3.4 0" }));
-          case "bell-off":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M13.7 21a2 2 0 0 1-3.4 0M18 8a6 6 0 0 0-9.3-5.2M6 8c0 7-3 9-3 9h13" }), /* @__PURE__ */ React.createElement("path", { d: "m2 2 20 20" }));
-          case "wrench":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.6-.7-.7-2.6Z" }));
-          case "db":
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("ellipse", { cx: "12", cy: "5", rx: "8", ry: "3" }), /* @__PURE__ */ React.createElement("path", { d: "M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" }), /* @__PURE__ */ React.createElement("path", { d: "M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" }));
-          default:
-            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }));
-        }
-      }
-      function HeaderClock() {
-        const [now, setNow] = useState(() => /* @__PURE__ */ new Date());
-        useEffect(() => {
-          const timer = window.setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
-          return () => window.clearInterval(timer);
-        }, []);
-        const date = now.toLocaleDateString("en-GB", {
-          weekday: "short",
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          timeZone: "Asia/Singapore"
-        });
-        const time = now.toLocaleTimeString("en-GB", {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          timeZone: "Asia/Singapore"
-        });
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-clock" }, /* @__PURE__ */ React.createElement("div", { className: "cc-clock-date" }, date), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-time" }, time), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-zone" }, "(GMT+8)"));
-      }
-      function Header({
-        filters,
-        onChange,
-        options,
-        source,
-        onSource,
-        connection,
-        version,
-        hostCount,
-        lastSync,
-        canGoLive,
-        sampleEnabled = true,
-        brandName = "OPSBEACON",
-        brandTagline = "REAL-TIME INFRASTRUCTURE HEALTH",
-        logoUrl,
-        title = "INFRASTRUCTURE OPERATIONS COMMAND CENTER",
-        subtitle = "All Servers  |  500 - 1,500 Servers  |  Real-time Infrastructure Health from Zabbix"
-      }) {
-        const [filtersOpen, setFiltersOpen] = useState(() => {
-          if (typeof window === "undefined") {
-            return true;
-          }
-          try {
-            return window.localStorage.getItem(filtersStorageKey()) !== "closed";
-          } catch (e) {
-            return true;
-          }
-        });
-        useEffect(() => {
-          try {
-            window.localStorage.setItem(filtersStorageKey(), filtersOpen ? "open" : "closed");
-          } catch (e) {
-          }
-        }, [filtersOpen]);
-        const activeValues = FILTER_KEYS.map((key) => filters[key]).filter((value) => value !== "All");
-        const filtersActive = activeValues.length > 0;
-        const resetFilters = () => FILTER_KEYS.forEach((key) => onChange(key, "All"));
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-header" }, /* @__PURE__ */ React.createElement("div", { className: "cc-brand" }, /* @__PURE__ */ React.createElement(BrandMark, { logoUrl }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-eyebrow" }, brandName, " ", /* @__PURE__ */ React.createElement("span", null, "\xB7"), " ", brandTagline), /* @__PURE__ */ React.createElement("div", { className: "cc-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "cc-subtitle" }, subtitle))), /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: `cc-header-filters${filtersOpen ? "" : " collapsed"}${filtersActive ? " is-filtered" : ""}`,
-            role: "group",
-            "aria-label": "Dashboard filters"
-          },
-          /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              type: "button",
-              className: "cc-filter-toggle",
-              "aria-expanded": filtersOpen,
-              title: filtersOpen ? "Hide filters" : "Show filters",
-              onClick: () => setFiltersOpen((open) => !open)
-            },
-            /* @__PURE__ */ React.createElement("span", { className: "cc-filter-caret", "aria-hidden": "true" }, "\u25BE"),
-            /* @__PURE__ */ React.createElement("span", null, "Filters"),
-            filtersActive ? /* @__PURE__ */ React.createElement("span", { className: "cc-filter-badge" }, activeValues.length) : null
-          ),
-          /* @__PURE__ */ React.createElement("span", { className: "cc-filter-summary", hidden: !filtersActive }, activeValues.join(" \xB7 ")),
-          /* @__PURE__ */ React.createElement("div", { className: "cc-filter-controls" }, /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Environment"), /* @__PURE__ */ React.createElement("select", { value: filters.environment, onChange: (e) => onChange("environment", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.environments.map((o) => /* @__PURE__ */ React.createElement("option", { key: o.value, value: o.value }, o.label)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "System Tier"), /* @__PURE__ */ React.createElement("select", { value: filters.tier, onChange: (e) => onChange("tier", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.tiers.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Host Group"), /* @__PURE__ */ React.createElement("select", { value: filters.hostGroup, onChange: (e) => onChange("hostGroup", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.groups.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "OS Type"), /* @__PURE__ */ React.createElement("select", { value: filters.os, onChange: (e) => onChange("os", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.os.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Business Service"), /* @__PURE__ */ React.createElement("select", { value: filters.businessService, onChange: (e) => onChange("businessService", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.services.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-filter-reset", title: "Reset filters", onClick: resetFilters }, "Reset"))
-        ), /* @__PURE__ */ React.createElement("div", { className: "cc-header-right" }, canGoLive ? sampleEnabled ? /* @__PURE__ */ React.createElement("div", { className: "cc-mode" }, /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            className: source === "sample" ? "active" : "",
-            onClick: () => onSource("sample")
-          },
-          "SAMPLE"
-        ), /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            className: source === "live" ? "active" : "",
-            onClick: () => onSource("live")
-          },
-          "LIVE"
-        )) : /* @__PURE__ */ React.createElement("div", { className: "cc-mode", title: "Sample data is disabled in the plugin configuration" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mode-note" }, "LIVE ONLY")) : null, /* @__PURE__ */ React.createElement(HeaderClock, null), /* @__PURE__ */ React.createElement("div", { className: `cc-zabbix is-${connection}` }, /* @__PURE__ */ React.createElement("span", { className: "cc-zabbix-dot" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-label" }, "ZABBIX"), /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-sub" }, connection === "sample" ? "Sample dataset \xB7 no API calls" : connection === "loading" ? "Connecting to Zabbix API\u2026" : connection === "ready" ? `v${version || "?"} \xB7 ${fmt$2(hostCount || 0)} hosts \xB7 sync ${lastSync || "\u2014"}` : "Connection failed")), /* @__PURE__ */ React.createElement(
-          "span",
-          {
-            className: `cc-sample-badge ${connection === "ready" ? "is-live" : ""} ${connection === "error" ? "is-error" : ""}`
-          },
-          connection === "sample" ? "SAMPLE" : connection === "loading" ? "SYNC" : connection === "ready" ? "LIVE" : "ERROR"
-        ))));
-      }
-      const SEVERITY_RANK = { Critical: 0, High: 1, Warning: 2, Info: 3 };
-      function LiveProblemsTicker({
-        problems,
-        onHost
-      }) {
-        const ranked = useMemo(() => {
-          const sorted = [...problems].sort(
-            (a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) || b.minutesAgo - a.minutesAgo
-          );
-          const take = (group, n) => sorted.filter((p) => p.severityGroup === group).slice(0, n);
-          const picks = [...take("Critical", 10), ...take("Warning", 3), ...take("Info", 1)];
-          const seen = new Set(picks.map((p) => p.id));
-          for (const p of sorted) {
-            if (picks.length >= 14) {
-              break;
-            }
-            if (!seen.has(p.id)) {
-              picks.push(p);
-              seen.add(p.id);
-            }
-          }
-          return picks;
-        }, [problems]);
-        const items = ranked;
-        const trackRef = useRef(null);
-        const [duration, setDuration] = useState(80);
-        useEffect(() => {
-          const track = trackRef.current;
-          if (!track) {
-            return;
-          }
-          const measure = () => {
-            const setWidth = track.scrollWidth / 2;
-            if (setWidth > 0) {
-              setDuration(Math.min(400, Math.max(45, Math.round(setWidth / 46))));
-            }
-          };
-          measure();
-          if (typeof ResizeObserver === "undefined") {
-            return;
-          }
-          const observer = new ResizeObserver(measure);
-          observer.observe(track);
-          return () => observer.disconnect();
-        }, [items.length]);
-        if (items.length === 0) {
-          return null;
-        }
-        const renderSet = (hidden) => /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-set", "aria-hidden": hidden ? "true" : void 0 }, items.map((p, i) => /* @__PURE__ */ React.createElement("span", { className: "cc-ticker-item", key: `${p.id}-${i}` }, /* @__PURE__ */ React.createElement("span", { className: `cc-sev cc-ticker-sev cc-sev-${p.severity.toLowerCase()}` }, p.severity), p.problem, onHost ? /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            type: "button",
-            className: "cc-ticker-host",
-            tabIndex: hidden ? -1 : void 0,
-            onClick: () => onHost(p.hostname)
-          },
-          p.hostname
-        ) : /* @__PURE__ */ React.createElement("b", null, p.hostname), /* @__PURE__ */ React.createElement("em", null, p.duration))), /* @__PURE__ */ React.createElement("span", { className: "cc-ticker-gap", key: "gap-end", "aria-hidden": "true" }));
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-ticker", "aria-label": "Active problems" }, /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-label" }, /* @__PURE__ */ React.createElement("span", { className: "cc-live-dot amber", "aria-hidden": "true" }), "LIVE PROBLEMS"), /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-viewport" }, /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-track", ref: trackRef, style: { animationDuration: `${duration}s` } }, renderSet(false), renderSet(true))));
-      }
-      function Kpi({
-        icon,
-        label,
-        value,
-        sub,
-        delta,
-        deltaTone,
-        tone,
-        href
-      }) {
-        const t = TONE[tone];
-        const body = /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 15 })), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-body" }, /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-value" }, value), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-sub" }, sub, delta ? /* @__PURE__ */ React.createElement("span", { className: "cc-kpi-delta", style: { color: deltaTone === "good" ? "#00d47e" : "#ff8a3d" } }, delta) : null)));
-        const style = { "--tone": t.tone, "--tone-bg": t.bg };
-        const alert = tone === "red";
-        const className = `cc-kpi${alert ? " cc-kpi-alert" : ""}`;
-        const beam = alert ? /* @__PURE__ */ React.createElement("span", { className: "cc-beam", "aria-hidden": "true" }) : null;
-        if (href) {
-          return /* @__PURE__ */ React.createElement(
-            "a",
-            {
-              className: `${className} cc-kpi-link`,
-              style,
-              "data-tone": tone,
-              href,
-              title: `Open the server list for ${label.toLowerCase()}`
-            },
-            beam,
-            body
-          );
-        }
-        return /* @__PURE__ */ React.createElement("div", { className, style, "data-tone": tone }, beam, body);
-      }
-      function UtilCard({
-        title,
-        sub,
-        avg,
-        critical,
-        warning,
-        normal,
-        accent
-      }) {
-        const rounded = Math.round(avg);
-        const band = avg >= 90 ? { color: "#ff4d67", label: "Critical" } : avg >= 70 ? { color: "#ffc107", label: "Warning" } : { color: "#00d47e", label: "Normal" };
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel", style: { "--accent": accent } }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, sub)), /* @__PURE__ */ React.createElement("div", { className: "cc-util-body" }, /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: "cc-ring",
-            style: { "--p": rounded, "--fill": band.color },
-            role: "img",
-            "aria-label": `${title}: ${rounded}% average, ${band.label} band`
-          },
-          /* @__PURE__ */ React.createElement("div", { className: "cc-ring-inner" }, /* @__PURE__ */ React.createElement("strong", null, rounded, "%"), /* @__PURE__ */ React.createElement("span", null, "avg"))
-        ), /* @__PURE__ */ React.createElement("div", { className: "cc-util-right" }, /* @__PURE__ */ React.createElement(
-          "div",
-          {
-            className: "cc-stackbar",
-            role: "img",
-            "aria-label": `${fmt$2(critical)} critical, ${fmt$2(warning)} warning, ${fmt$2(normal)} normal`
-          },
-          /* @__PURE__ */ React.createElement("span", { className: "cc-seg crit", style: { flexGrow: critical } }),
-          /* @__PURE__ */ React.createElement("span", { className: "cc-seg warn", style: { flexGrow: warning } }),
-          /* @__PURE__ */ React.createElement("span", { className: "cc-seg ok", style: { flexGrow: normal } })
-        ), /* @__PURE__ */ React.createElement("div", { className: "cc-legend" }, /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ff4d67" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Critical (\u2265 90%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(critical))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ffc107" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Warning (70\u201390%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(warning))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Normal (< 70%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(normal)))))));
-      }
-      function groupCounts(hosts) {
-        return {
-          healthy: hosts.filter((h) => h.health === "healthy").length,
-          warning: hosts.filter((h) => h.health === "warning").length,
-          critical: hosts.filter((h) => h.health === "critical").length,
-          stale: hosts.filter((h) => h.health === "stale").length,
-          maintenance: hosts.filter((h) => h.health === "maintenance").length,
-          unavailable: hosts.filter((h) => h.health === "unavailable").length
-        };
-      }
-      function GroupPanel({
-        group: g,
-        onSelect
-      }) {
-        const c = groupCounts(g.tiers.flatMap((t) => t.hosts));
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-group", style: { "--group": GROUP_COLOR[g.key] } }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-name" }, /* @__PURE__ */ React.createElement("span", { className: `cc-env-dot ${g.key.toLowerCase()}`, "aria-hidden": "true" }), g.name, /* @__PURE__ */ React.createElement("span", { className: "cc-group-total" }, fmt$2(g.total))), /* @__PURE__ */ React.createElement("div", { className: "cc-group-legend" }, /* @__PURE__ */ React.createElement("span", { className: "cc-lg ok" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.healthy), " healthy"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg warn" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.warning), " warning"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg crit" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.critical), " critical"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg other" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.stale + c.maintenance + c.unavailable), " other"))), /* @__PURE__ */ React.createElement("div", { className: "cc-grid-wrap" }, g.tiers.map((tier) => {
-          const tc = groupCounts(tier.hosts);
-          return /* @__PURE__ */ React.createElement("div", { className: "cc-tier-row", key: tier.name }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-label" }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-title" }, tier.name), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-sub" }, tier.subtitle, " (", fmt$2(tier.hosts.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-counts" }, /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.healthy }, title: `${tc.healthy} healthy` }, tc.healthy), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.warning }, title: `${tc.warning} warning` }, tc.warning), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.critical }, title: `${tc.critical} critical` }, tc.critical), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.stale }, title: `${tc.stale} stale` }, tc.stale))), /* @__PURE__ */ React.createElement("div", { className: "cc-host-grid" }, tier.hosts.map((h) => /* @__PURE__ */ React.createElement(
-            "button",
-            {
-              key: h.id,
-              type: "button",
-              className: `cc-cell cc-cell-btn cc-cell-${h.health}`,
-              title: `${h.hostname} \xB7 ${h.health} \xB7 CPU ${h.cpu}% \xB7 Memory ${h.memory}% \xB7 Disk ${h.disk}%`,
-              "aria-label": `Open server statistics for ${h.hostname}, health ${h.health}`,
-              tabIndex: -1,
-              onClick: () => onSelect && onSelect(h)
-            }
-          )), tier.hosts.length === 0 ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "No hosts match filters") : null));
-        })), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-inline" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.healthy } }), " Healthy"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.warning } }), " Warning"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.critical } }), " Critical"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot cc-dot-stale" }), " Stale"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.maintenance } }), " Maintenance"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.unavailable } }), " Unavailable")));
-      }
-      function GroupGrids({
-        groups,
-        onSelect
-      }) {
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-groups" }, groups.map((g) => /* @__PURE__ */ React.createElement(GroupPanel, { key: g.key, group: g, onSelect })));
-      }
-      function rowLinkProps(href) {
-        if (!href) {
-          return {};
-        }
-        const open = () => {
-          if (typeof window !== "undefined") {
-            window.location.href = href;
-          }
-        };
-        return {
-          className: "cc-row-link",
-          role: "link",
-          tabIndex: 0,
-          title: "Open the server list for this row",
-          onClick: open,
-          onKeyDown: (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              open();
-            }
-          }
-        };
-      }
-      function BusinessServicesTable({
-        rows,
-        href
-      }) {
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Business Services Impact"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, rows.length, " services")), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Business Service"), /* @__PURE__ */ React.createElement("th", null, "Env"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Servers"), /* @__PURE__ */ React.createElement("th", null, "Status"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Active Problems"))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((r, i) => {
-          const link = href ? href(r) : void 0;
-          return /* @__PURE__ */ React.createElement("tr", { key: r.name, ...rowLinkProps(link) }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, link ? /* @__PURE__ */ React.createElement(
-            "a",
-            {
-              className: "cc-row-anchor",
-              href: link,
-              onClick: (event) => event.stopPropagation()
-            },
-            r.name,
-            /* @__PURE__ */ React.createElement("span", { className: "cc-row-arrow" }, "\u203A")
-          ) : r.name), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.env), /* @__PURE__ */ React.createElement("td", { className: "num" }, fmt$2(r.servers)), /* @__PURE__ */ React.createElement("td", { className: `cc-status cc-status-${r.status.toLowerCase()}` }, r.status), /* @__PURE__ */ React.createElement("td", { className: "num", style: { color: r.activeProblems > 0 ? "#ff8a3d" : "#00d47e" } }, r.activeProblems));
-        }), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "cc-muted" }, "No services match the current filters.")) : null))));
-      }
-      function statusClass(status) {
-        return `cc-status cc-status-${status.toLowerCase()}`;
-      }
-      function DrTable({
-        rows,
-        href
-      }) {
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "DR Readiness & Replication Health"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, rows.length, " components")), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Service / Component"), /* @__PURE__ */ React.createElement("th", null, "PROD Status"), /* @__PURE__ */ React.createElement("th", null, "DR Status"), /* @__PURE__ */ React.createElement("th", null, "Replication Lag"), /* @__PURE__ */ React.createElement("th", null, "Last Sync"))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((r) => {
-          const link = href ? href(r) : void 0;
-          return /* @__PURE__ */ React.createElement("tr", { key: r.name, ...rowLinkProps(link) }, /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, link ? /* @__PURE__ */ React.createElement(
-            "a",
-            {
-              className: "cc-row-anchor",
-              href: link,
-              onClick: (event) => event.stopPropagation()
-            },
-            r.name,
-            /* @__PURE__ */ React.createElement("span", { className: "cc-row-arrow" }, "\u203A")
-          ) : r.name), /* @__PURE__ */ React.createElement("td", { className: statusClass(r.prodStatus) }, r.prodStatus), /* @__PURE__ */ React.createElement("td", { className: statusClass(r.drStatus) }, r.drStatus), /* @__PURE__ */ React.createElement("td", { style: { color: r.replicationLag.includes("1h") ? "#ff4d67" : "#b9c9dd" } }, r.replicationLag), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.lastSync));
-        }), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 5, className: "cc-muted" }, "No DR components are defined in Zabbix.")) : null))));
-      }
-      function Sparkline$1({ values, color }) {
-        const w = 64;
-        const h = 18;
-        const n = values.length || 1;
-        const points = values.map((v, i) => `${i / Math.max(1, n - 1) * w},${h - Math.max(0, Math.min(100, v)) / 100 * h}`).join(" ");
-        return /* @__PURE__ */ React.createElement("svg", { className: "cc-spark", viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none" }, /* @__PURE__ */ React.createElement("polyline", { points, fill: "none", stroke: color, strokeWidth: "1.2" }));
-      }
-      const RESOURCE_LABEL = {
-        cpu: "CPU",
-        memory: "Memory",
-        disk: "Disk"
-      };
-      const RESOURCE_COLOR = {
-        cpu: "#ffb020",
-        memory: "#8b5cf6",
-        disk: "#00d47e"
-      };
-      function TopServersPanel({
-        rows,
-        resource,
-        onResource,
-        onHost
-      }) {
-        const value = (r) => r[resource];
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Top 10 Servers by Resource Utilisation"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, RESOURCE_LABEL[resource])), /* @__PURE__ */ React.createElement("div", { className: "cc-tabs" }, ["cpu", "memory", "disk"].map((r) => /* @__PURE__ */ React.createElement(
-          "button",
-          {
-            key: r,
-            type: "button",
-            className: `cc-tab ${resource === r ? "active" : ""}`,
-            onClick: () => onResource(r)
-          },
-          RESOURCE_LABEL[r]
-        ))), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Env"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", { className: "num" }, RESOURCE_LABEL[resource]), /* @__PURE__ */ React.createElement("th", null, "Trend (24h)"))), /* @__PURE__ */ React.createElement("tbody", null, rows.slice(0, 10).map((r, i) => /* @__PURE__ */ React.createElement("tr", { key: r.hostname }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(r.hostname) }, r.hostname) : r.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("div", { className: "cc-bar-cell" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-track" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-fill", style: { width: `${value(r)}%`, background: RESOURCE_COLOR[resource] } })), /* @__PURE__ */ React.createElement("span", { style: { color: RESOURCE_COLOR[resource], fontWeight: 700 } }, value(r), "%"))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Sparkline$1, { values: r.trends[resource], color: RESOURCE_COLOR[resource] })))), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "cc-muted" }, "No hosts match the current filters.")) : null))));
-      }
-      const ENV_ORDER = { PROD: 0, DR: 1, UAT: 2 };
-      function MaintenanceTable({
-        hosts,
-        onHost
-      }) {
-        const rows = [...hosts].sort(
-          (a, b) => (ENV_ORDER[a.environment] ?? 9) - (ENV_ORDER[b.environment] ?? 9) || a.tier.localeCompare(b.tier) || a.hostname.localeCompare(b.hostname)
-        );
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Servers in Maintenance (", fmt$2(hosts.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, "Not counted as available while the maintenance window is active")), /* @__PURE__ */ React.createElement("div", { className: "cc-maintenance-scroll" }, /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-maintenance-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", { className: "cc-col-secondary" }, "Business Service"), /* @__PURE__ */ React.createElement("th", { className: "cc-col-secondary" }, "OS"), /* @__PURE__ */ React.createElement("th", null, "Last Data"), /* @__PURE__ */ React.createElement("th", null, "State"))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((h, i) => /* @__PURE__ */ React.createElement("tr", { key: h.id }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(h.hostname) }, h.hostname) : h.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", { className: "cc-muted cc-col-secondary" }, h.businessService), /* @__PURE__ */ React.createElement("td", { className: "cc-muted cc-col-secondary" }, h.os), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, fmt$2(h.lastSeenMin), "m ago"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "cc-maintenance-state" }, /* @__PURE__ */ React.createElement("i", { "aria-hidden": "true" }), "Maintenance")))), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "cc-muted" }, "No servers are in maintenance for the current filters.")) : null)))));
-      }
-      function severityClass(s) {
-        return `cc-sev cc-sev-${s.toLowerCase()}`;
-      }
-      function slaClass(s) {
-        if (s === "Within SLA") return "cc-sla-within";
-        if (s === "At Risk") return "cc-sla-risk";
-        if (s === "Not tracked") return "cc-muted";
-        return "cc-sla-breach";
-      }
-      function ProblemsTable({
-        problems,
-        tab,
-        onTab,
-        counts,
-        source,
-        refreshSeconds,
-        onHost,
-        title = "Active Problems",
-        tabs = ["All", "Critical", "Warning", "Info"]
-      }) {
-        const refreshLabel = refreshSeconds && refreshSeconds >= 60 && refreshSeconds % 60 === 0 ? `${refreshSeconds / 60}m` : `${refreshSeconds || 60}s`;
-        const visible = problems.filter((p) => tab === "All" || p.severityGroup === tab);
-        const shown = visible;
-        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-problems" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, title, " (", fmt$2(problems.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, source === "live" ? "Live Zabbix API \xB7 read-only" : "Sample data mode \xB7 read-only")), /* @__PURE__ */ React.createElement("div", { className: "cc-problem-tabs" }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t, type: "button", className: `cc-tab ${tab === t ? "active" : ""}`, onClick: () => onTab(t) }, t, " (", fmt$2(counts[t] ?? 0), ")")), /* @__PURE__ */ React.createElement("span", { className: "cc-spacer" }), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "Showing ", fmt$2(shown.length), " of ", fmt$2(problems.length))), /* @__PURE__ */ React.createElement("div", { className: "cc-problem-scroll" }, /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-problem-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Time"), /* @__PURE__ */ React.createElement("th", null, "Severity"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", null, "Business Service"), /* @__PURE__ */ React.createElement("th", null, "Problem"), /* @__PURE__ */ React.createElement("th", null, "Current Value"), /* @__PURE__ */ React.createElement("th", null, "Threshold"), /* @__PURE__ */ React.createElement("th", null, "Duration"), /* @__PURE__ */ React.createElement("th", null, "SLA Status"), /* @__PURE__ */ React.createElement("th", null, "Ack"), /* @__PURE__ */ React.createElement("th", null, "Maintenance"), /* @__PURE__ */ React.createElement("th", null, "Related / Impact"))), /* @__PURE__ */ React.createElement("tbody", null, shown.map((p, i) => /* @__PURE__ */ React.createElement("tr", { key: p.id }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.time), /* @__PURE__ */ React.createElement("td", { className: severityClass(p.severity) }, p.severity), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(p.hostname) }, p.hostname) : p.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.businessService), /* @__PURE__ */ React.createElement("td", null, p.problem), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, p.currentValue), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.threshold), /* @__PURE__ */ React.createElement("td", { className: "cc-duration" }, p.duration), /* @__PURE__ */ React.createElement("td", { className: slaClass(p.sla) }, p.sla), /* @__PURE__ */ React.createElement("td", { className: p.ack ? "cc-ack-yes" : "cc-ack-no" }, p.ack ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: p.maintenance ? "cc-ack-yes" : "cc-muted" }, p.maintenance ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: "cc-related" }, "\u21B3 ", p.related))), shown.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 15, className: "cc-muted" }, "No problems in this view.")) : null)))), /* @__PURE__ */ React.createElement("div", { className: "cc-footer" }, /* @__PURE__ */ React.createElement("span", null, source === "live" ? `Data source: Zabbix API \xB7 read-only \xB7 refresh: ${refreshLabel}` : "Data source: deterministic sample dataset (1,268 hosts, 76 problems) \xB7 no Zabbix calls"), /* @__PURE__ */ React.createElement("span", null, "Time zone: GMT+8")));
-      }
 
       const PLUGIN_ID = "acme-command-center-app";
       const DEFAULT_ZABBIX_CONFIG = {
@@ -513,6 +48,9 @@ System.register(['react', '@grafana/data'], (function (exports) {
       function isGrafanaHosted() {
         return !!globalThis.grafanaBootData;
       }
+      function pluginAsset(path) {
+        return `${appSubUrl()}/public/plugins/${PLUGIN_ID}/${path.replace(/^\/+/, "")}`;
+      }
       function settingsUrl() {
         return `${appSubUrl()}/api/plugins/${PLUGIN_ID}/settings`;
       }
@@ -527,7 +65,14 @@ System.register(['react', '@grafana/data'], (function (exports) {
           return fallback;
         }
         const p = value.trim().replace(/^\/+|\/+$/g, "");
-        return /^[A-Za-z0-9._~/-]+$/.test(p) ? p : fallback;
+        if (!/^[A-Za-z0-9._~/-]+$/.test(p)) {
+          return fallback;
+        }
+        const segments = p.split("/");
+        if (segments.some((segment) => segment === "" || segment === "." || segment === "..")) {
+          return fallback;
+        }
+        return p;
       }
       function normalizeApiUrl(value, fallback = DEFAULT_ZABBIX_CONFIG.apiUrl) {
         if (typeof value !== "string") {
@@ -538,8 +83,14 @@ System.register(['react', '@grafana/data'], (function (exports) {
           return fallback;
         }
         if (v.startsWith("/")) {
-          v = v.replace(/\/+$/, "");
-          return /\/api_jsonrpc\.php$/i.test(v) ? v : `${v}/api_jsonrpc.php`;
+          if (v.startsWith("//")) {
+            return fallback;
+          }
+          const path2 = v.replace(/\/+$/, "");
+          if (path2.split("/").some((segment) => segment === "." || segment === "..")) {
+            return fallback;
+          }
+          return /\/api_jsonrpc\.php$/i.test(path2) ? path2 : `${path2}/api_jsonrpc.php`;
         }
         if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) {
           v = `http://${v}`;
@@ -869,6 +420,514 @@ System.register(['react', '@grafana/data'], (function (exports) {
           endpoint: zabbixEndpoint(config, "api"),
           account: config.transport !== "direct" ? "Grafana proxy" : config.authMethod === "credentials" ? `user ${config.username}` : "API token"
         };
+      }
+
+      const TONE = {
+        blue: { tone: "#2f9bff", bg: "rgba(47, 155, 255, 0.12)" },
+        green: { tone: "#00e676", bg: "rgba(0, 230, 118, 0.12)" },
+        red: { tone: "#ff3d57", bg: "rgba(255, 61, 87, 0.12)" },
+        yellow: { tone: "#ffc107", bg: "rgba(255, 193, 7, 0.12)" },
+        orange: { tone: "#ff8a3d", bg: "rgba(255, 138, 61, 0.12)" },
+        purple: { tone: "#8b5cf6", bg: "rgba(139, 92, 246, 0.12)" },
+        cyan: { tone: "#00d4ff", bg: "rgba(0, 212, 255, 0.12)" },
+        gray: { tone: "#8ea3bf", bg: "rgba(142, 163, 191, 0.10)" }
+      };
+      const GROUP_COLOR = {
+        PROD: "#2f9bff",
+        DR: "#8b5cf6",
+        UAT: "#00d4ff"
+      };
+      const HEALTH_COLOR$1 = {
+        healthy: "#00d47e",
+        warning: "#ffc107",
+        critical: "#ff3b30",
+        stale: "#8f9298",
+        maintenance: "#22d3ee",
+        unavailable: "#a855f7"
+      };
+      const FILTER_KEYS = ["environment", "tier", "hostGroup", "os", "businessService"];
+      const FILTERS_STORAGE_KEY = "opsbeacon-filters-open";
+      function filtersStorageKey() {
+        if (typeof window === "undefined") {
+          return FILTERS_STORAGE_KEY;
+        }
+        return `${FILTERS_STORAGE_KEY}:${window.location.pathname}`;
+      }
+      const fmt$2 = (n) => n.toLocaleString("en-US");
+      function defaultLogoUrl() {
+        return isGrafanaHosted() ? pluginAsset("img/logo.png") : "";
+      }
+      function BrandMark({ logoUrl, className }) {
+        const boxRef = useRef(null);
+        const [failedSrc, setFailedSrc] = useState(null);
+        const [side, setSide] = useState(0);
+        const configured = logoUrl || defaultLogoUrl();
+        const src = configured && configured !== failedSrc ? configured : "";
+        useLayoutEffect(() => {
+          const box = boxRef.current;
+          const text = box && box.nextElementSibling;
+          if (!text) {
+            return;
+          }
+          const measure = () => {
+            const height = Math.round(text.getBoundingClientRect().height);
+            if (height > 0) {
+              setSide(height);
+            }
+          };
+          measure();
+          if (typeof ResizeObserver === "undefined") {
+            return;
+          }
+          const observer = new ResizeObserver(measure);
+          observer.observe(text);
+          return () => observer.disconnect();
+        }, []);
+        return /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            ref: boxRef,
+            className: `cc-logo${src ? " cc-logo-image" : ""}${className ? ` ${className}` : ""}`,
+            style: src && side ? { width: side, height: side } : void 0,
+            "aria-hidden": "true"
+          },
+          src ? /* @__PURE__ */ React.createElement("img", { src, alt: "", onError: () => setFailedSrc(src) }) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { style: { background: "#28a9ff" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { style: { background: "#ffb020" } }))
+        );
+      }
+      function Icon({ name, size = 16 }) {
+        const common = {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: "currentColor",
+          strokeWidth: 1.8,
+          strokeLinecap: "round",
+          strokeLinejoin: "round"
+        };
+        switch (name) {
+          case "server":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("rect", { x: "3", y: "4", width: "18", height: "6", rx: "1.6" }), /* @__PURE__ */ React.createElement("rect", { x: "3", y: "14", width: "18", height: "6", rx: "1.6" }), /* @__PURE__ */ React.createElement("path", { d: "M7 7h.01M7 17h.01M11 7h.01M11 17h.01" }));
+          case "check":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }), /* @__PURE__ */ React.createElement("path", { d: "m8 12 2.6 2.6L16 9" }));
+          case "x":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }), /* @__PURE__ */ React.createElement("path", { d: "m9 9 6 6M15 9l-6 6" }));
+          case "alert":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M10.3 3.8 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z" }), /* @__PURE__ */ React.createElement("path", { d: "M12 9v4M12 17h.01" }));
+          case "bell":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" }), /* @__PURE__ */ React.createElement("path", { d: "M13.7 21a2 2 0 0 1-3.4 0" }));
+          case "bell-off":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M13.7 21a2 2 0 0 1-3.4 0M18 8a6 6 0 0 0-9.3-5.2M6 8c0 7-3 9-3 9h13" }), /* @__PURE__ */ React.createElement("path", { d: "m2 2 20 20" }));
+          case "wrench":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("path", { d: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.6-.7-.7-2.6Z" }));
+          case "db":
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("ellipse", { cx: "12", cy: "5", rx: "8", ry: "3" }), /* @__PURE__ */ React.createElement("path", { d: "M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" }), /* @__PURE__ */ React.createElement("path", { d: "M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" }));
+          default:
+            return /* @__PURE__ */ React.createElement("svg", { ...common }, /* @__PURE__ */ React.createElement("circle", { cx: "12", cy: "12", r: "9" }));
+        }
+      }
+      function HeaderClock() {
+        const [now, setNow] = useState(() => /* @__PURE__ */ new Date());
+        useEffect(() => {
+          const timer = window.setInterval(() => setNow(/* @__PURE__ */ new Date()), 1e3);
+          return () => window.clearInterval(timer);
+        }, []);
+        const date = now.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          timeZone: "Asia/Singapore"
+        });
+        const time = now.toLocaleTimeString("en-GB", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          timeZone: "Asia/Singapore"
+        });
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-clock" }, /* @__PURE__ */ React.createElement("div", { className: "cc-clock-date" }, date), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-time" }, time), /* @__PURE__ */ React.createElement("div", { className: "cc-clock-zone" }, "(GMT+8)"));
+      }
+      function Header({
+        filters,
+        onChange,
+        options,
+        source,
+        onSource,
+        connection,
+        version,
+        hostCount,
+        lastSync,
+        canGoLive,
+        sampleEnabled = true,
+        brandName = "OPSBEACON",
+        brandTagline = "REAL-TIME INFRASTRUCTURE HEALTH",
+        logoUrl,
+        title = "INFRASTRUCTURE OPERATIONS COMMAND CENTER",
+        subtitle = "All Servers  |  500 - 1,500 Servers  |  Real-time Infrastructure Health from Zabbix"
+      }) {
+        const [filtersOpen, setFiltersOpen] = useState(() => {
+          if (typeof window === "undefined") {
+            return true;
+          }
+          try {
+            return window.localStorage.getItem(filtersStorageKey()) !== "closed";
+          } catch (e) {
+            return true;
+          }
+        });
+        useEffect(() => {
+          try {
+            window.localStorage.setItem(filtersStorageKey(), filtersOpen ? "open" : "closed");
+          } catch (e) {
+          }
+        }, [filtersOpen]);
+        const activeValues = FILTER_KEYS.map((key) => filters[key]).filter((value) => value !== "All");
+        const filtersActive = activeValues.length > 0;
+        const resetFilters = () => FILTER_KEYS.forEach((key) => onChange(key, "All"));
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-header" }, /* @__PURE__ */ React.createElement("div", { className: "cc-brand" }, /* @__PURE__ */ React.createElement(BrandMark, { logoUrl }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-eyebrow" }, brandName, " ", /* @__PURE__ */ React.createElement("span", null, "\xB7"), " ", brandTagline), /* @__PURE__ */ React.createElement("div", { className: "cc-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "cc-subtitle" }, subtitle))), /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: `cc-header-filters${filtersOpen ? "" : " collapsed"}${filtersActive ? " is-filtered" : ""}`,
+            role: "group",
+            "aria-label": "Dashboard filters"
+          },
+          /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "cc-filter-toggle",
+              "aria-expanded": filtersOpen,
+              title: filtersOpen ? "Hide filters" : "Show filters",
+              onClick: () => setFiltersOpen((open) => !open)
+            },
+            /* @__PURE__ */ React.createElement("span", { className: "cc-filter-caret", "aria-hidden": "true" }, "\u25BE"),
+            /* @__PURE__ */ React.createElement("span", null, "Filters"),
+            filtersActive ? /* @__PURE__ */ React.createElement("span", { className: "cc-filter-badge" }, activeValues.length) : null
+          ),
+          /* @__PURE__ */ React.createElement("span", { className: "cc-filter-summary", hidden: !filtersActive }, activeValues.join(" \xB7 ")),
+          /* @__PURE__ */ React.createElement("div", { className: "cc-filter-controls" }, /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Environment"), /* @__PURE__ */ React.createElement("select", { value: filters.environment, onChange: (e) => onChange("environment", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.environments.map((o) => /* @__PURE__ */ React.createElement("option", { key: o.value, value: o.value }, o.label)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "System Tier"), /* @__PURE__ */ React.createElement("select", { value: filters.tier, onChange: (e) => onChange("tier", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.tiers.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Host Group"), /* @__PURE__ */ React.createElement("select", { value: filters.hostGroup, onChange: (e) => onChange("hostGroup", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.groups.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "OS Type"), /* @__PURE__ */ React.createElement("select", { value: filters.os, onChange: (e) => onChange("os", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.os.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("div", { className: "cc-filter" }, /* @__PURE__ */ React.createElement("label", null, "Business Service"), /* @__PURE__ */ React.createElement("select", { value: filters.businessService, onChange: (e) => onChange("businessService", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "All" }, "All"), options.services.map((o) => /* @__PURE__ */ React.createElement("option", { key: o, value: o }, o)))), /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-filter-reset", title: "Reset filters", onClick: resetFilters }, "Reset"))
+        ), /* @__PURE__ */ React.createElement("div", { className: "cc-header-right" }, canGoLive ? sampleEnabled ? /* @__PURE__ */ React.createElement("div", { className: "cc-mode" }, /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            className: source === "sample" ? "active" : "",
+            onClick: () => onSource("sample")
+          },
+          "SAMPLE"
+        ), /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            className: source === "live" ? "active" : "",
+            onClick: () => onSource("live")
+          },
+          "LIVE"
+        )) : /* @__PURE__ */ React.createElement("div", { className: "cc-mode", title: "Sample data is disabled in the plugin configuration" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mode-note" }, "LIVE ONLY")) : null, /* @__PURE__ */ React.createElement(HeaderClock, null), /* @__PURE__ */ React.createElement("div", { className: `cc-zabbix is-${connection}` }, /* @__PURE__ */ React.createElement("span", { className: "cc-zabbix-dot" }), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-label" }, "ZABBIX"), /* @__PURE__ */ React.createElement("div", { className: "cc-zabbix-sub" }, connection === "sample" ? "Sample dataset \xB7 no API calls" : connection === "loading" ? "Connecting to Zabbix API\u2026" : connection === "ready" ? `v${version || "?"} \xB7 ${fmt$2(hostCount || 0)} hosts \xB7 sync ${lastSync || "\u2014"}` : "Connection failed")), /* @__PURE__ */ React.createElement(
+          "span",
+          {
+            className: `cc-sample-badge ${connection === "ready" ? "is-live" : ""} ${connection === "error" ? "is-error" : ""}`
+          },
+          connection === "sample" ? "SAMPLE" : connection === "loading" ? "SYNC" : connection === "ready" ? "LIVE" : "ERROR"
+        ))));
+      }
+      const SEVERITY_RANK = { Critical: 0, High: 1, Warning: 2, Info: 3 };
+      function LiveProblemsTicker({
+        problems,
+        onHost
+      }) {
+        const ranked = useMemo(() => {
+          const sorted = [...problems].sort(
+            (a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) || b.minutesAgo - a.minutesAgo
+          );
+          const take = (group, n) => sorted.filter((p) => p.severityGroup === group).slice(0, n);
+          const picks = [...take("Critical", 10), ...take("Warning", 3), ...take("Info", 1)];
+          const seen = new Set(picks.map((p) => p.id));
+          for (const p of sorted) {
+            if (picks.length >= 14) {
+              break;
+            }
+            if (!seen.has(p.id)) {
+              picks.push(p);
+              seen.add(p.id);
+            }
+          }
+          return picks;
+        }, [problems]);
+        const items = ranked;
+        const trackRef = useRef(null);
+        const [duration, setDuration] = useState(80);
+        useEffect(() => {
+          const track = trackRef.current;
+          if (!track) {
+            return;
+          }
+          const measure = () => {
+            const setWidth = track.scrollWidth / 2;
+            if (setWidth > 0) {
+              setDuration(Math.min(400, Math.max(45, Math.round(setWidth / 46))));
+            }
+          };
+          let frame = requestAnimationFrame(() => {
+            frame = requestAnimationFrame(measure);
+          });
+          if (typeof ResizeObserver === "undefined") {
+            return () => cancelAnimationFrame(frame);
+          }
+          const observer = new ResizeObserver(measure);
+          observer.observe(track);
+          return () => {
+            cancelAnimationFrame(frame);
+            observer.disconnect();
+          };
+        }, [items.length]);
+        if (items.length === 0) {
+          return null;
+        }
+        const renderSet = (hidden) => /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-set", "aria-hidden": hidden ? "true" : void 0 }, items.map((p, i) => /* @__PURE__ */ React.createElement("span", { className: "cc-ticker-item", key: `${p.id}-${i}` }, /* @__PURE__ */ React.createElement("span", { className: `cc-sev cc-ticker-sev cc-sev-${p.severity.toLowerCase()}` }, p.severity), p.problem, onHost ? /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "cc-ticker-host",
+            tabIndex: hidden ? -1 : void 0,
+            onClick: () => onHost(p.hostname)
+          },
+          p.hostname
+        ) : /* @__PURE__ */ React.createElement("b", null, p.hostname), /* @__PURE__ */ React.createElement("em", null, p.duration))), /* @__PURE__ */ React.createElement("span", { className: "cc-ticker-gap", key: "gap-end", "aria-hidden": "true" }));
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-ticker", "aria-label": "Active problems" }, /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-label" }, /* @__PURE__ */ React.createElement("span", { className: "cc-live-dot amber", "aria-hidden": "true" }), "LIVE PROBLEMS"), /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-viewport" }, /* @__PURE__ */ React.createElement("div", { className: "cc-ticker-track", ref: trackRef, style: { animationDuration: `${duration}s` } }, renderSet(false), renderSet(true))));
+      }
+      function Kpi({
+        icon,
+        label,
+        value,
+        sub,
+        delta,
+        deltaTone,
+        tone,
+        href
+      }) {
+        const t = TONE[tone];
+        const body = /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-icon" }, /* @__PURE__ */ React.createElement(Icon, { name: icon, size: 15 })), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-body" }, /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-label" }, label), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-value" }, value), /* @__PURE__ */ React.createElement("div", { className: "cc-kpi-sub" }, sub, delta ? /* @__PURE__ */ React.createElement("span", { className: "cc-kpi-delta", style: { color: deltaTone === "good" ? "#00d47e" : "#ff8a3d" } }, delta) : null)));
+        const style = { "--tone": t.tone, "--tone-bg": t.bg };
+        const alert = tone === "red";
+        const className = `cc-kpi${alert ? " cc-kpi-alert" : ""}`;
+        const beam = alert ? /* @__PURE__ */ React.createElement("span", { className: "cc-beam", "aria-hidden": "true" }) : null;
+        if (href) {
+          return /* @__PURE__ */ React.createElement(
+            "a",
+            {
+              className: `${className} cc-kpi-link`,
+              style,
+              "data-tone": tone,
+              href,
+              title: `Open the server list for ${label.toLowerCase()}`
+            },
+            beam,
+            body
+          );
+        }
+        return /* @__PURE__ */ React.createElement("div", { className, style, "data-tone": tone }, beam, body);
+      }
+      function UtilCard({
+        title,
+        sub,
+        avg,
+        critical,
+        warning,
+        normal,
+        accent
+      }) {
+        const rounded = Math.round(avg);
+        const band = avg >= 90 ? { color: "#ff4d67", label: "Critical" } : avg >= 70 ? { color: "#ffc107", label: "Warning" } : { color: "#00d47e", label: "Normal" };
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel", style: { "--accent": accent } }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, title), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, sub)), /* @__PURE__ */ React.createElement("div", { className: "cc-util-body" }, /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: "cc-ring",
+            style: { "--p": rounded, "--fill": band.color },
+            role: "img",
+            "aria-label": `${title}: ${rounded}% average, ${band.label} band`
+          },
+          /* @__PURE__ */ React.createElement("div", { className: "cc-ring-inner" }, /* @__PURE__ */ React.createElement("strong", null, rounded, "%"), /* @__PURE__ */ React.createElement("span", null, "avg"))
+        ), /* @__PURE__ */ React.createElement("div", { className: "cc-util-right" }, /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            className: "cc-stackbar",
+            role: "img",
+            "aria-label": `${fmt$2(critical)} critical, ${fmt$2(warning)} warning, ${fmt$2(normal)} normal`
+          },
+          /* @__PURE__ */ React.createElement("span", { className: "cc-seg crit", style: { flexGrow: critical } }),
+          /* @__PURE__ */ React.createElement("span", { className: "cc-seg warn", style: { flexGrow: warning } }),
+          /* @__PURE__ */ React.createElement("span", { className: "cc-seg ok", style: { flexGrow: normal } })
+        ), /* @__PURE__ */ React.createElement("div", { className: "cc-legend" }, /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ff4d67" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Critical (\u2265 90%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(critical))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#ffc107" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Warning (70\u201390%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(warning))), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-row" }, /* @__PURE__ */ React.createElement("span", { className: "cc-dot", style: { background: "#00d47e" } }), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-label" }, "Normal (< 70%)"), /* @__PURE__ */ React.createElement("span", { className: "cc-legend-value" }, fmt$2(normal)))))));
+      }
+      function groupCounts(hosts) {
+        return {
+          healthy: hosts.filter((h) => h.health === "healthy").length,
+          warning: hosts.filter((h) => h.health === "warning").length,
+          critical: hosts.filter((h) => h.health === "critical").length,
+          stale: hosts.filter((h) => h.health === "stale").length,
+          maintenance: hosts.filter((h) => h.health === "maintenance").length,
+          unavailable: hosts.filter((h) => h.health === "unavailable").length
+        };
+      }
+      function GroupPanel({
+        group: g,
+        onSelect
+      }) {
+        const c = groupCounts(g.tiers.flatMap((t) => t.hosts));
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-group", style: { "--group": GROUP_COLOR[g.key] } }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-group-name" }, /* @__PURE__ */ React.createElement("span", { className: `cc-env-dot ${g.key.toLowerCase()}`, "aria-hidden": "true" }), g.name, /* @__PURE__ */ React.createElement("span", { className: "cc-group-total" }, fmt$2(g.total))), /* @__PURE__ */ React.createElement("div", { className: "cc-group-legend" }, /* @__PURE__ */ React.createElement("span", { className: "cc-lg ok" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.healthy), " healthy"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg warn" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.warning), " warning"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg crit" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.critical), " critical"), /* @__PURE__ */ React.createElement("span", { className: "cc-lg other" }, /* @__PURE__ */ React.createElement("i", null), fmt$2(c.stale + c.maintenance + c.unavailable), " other"))), /* @__PURE__ */ React.createElement("div", { className: "cc-grid-wrap" }, g.tiers.map((tier) => {
+          const tc = groupCounts(tier.hosts);
+          return /* @__PURE__ */ React.createElement("div", { className: "cc-tier-row", key: tier.name }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-label" }, /* @__PURE__ */ React.createElement("div", { className: "cc-tier-title" }, tier.name), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-sub" }, tier.subtitle, " (", fmt$2(tier.hosts.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-tier-counts" }, /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.healthy }, title: `${tc.healthy} healthy` }, tc.healthy), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.warning }, title: `${tc.warning} warning` }, tc.warning), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.critical }, title: `${tc.critical} critical` }, tc.critical), /* @__PURE__ */ React.createElement("span", { style: { color: HEALTH_COLOR$1.stale }, title: `${tc.stale} stale` }, tc.stale))), /* @__PURE__ */ React.createElement("div", { className: "cc-host-grid" }, tier.hosts.map((h) => /* @__PURE__ */ React.createElement(
+            "button",
+            {
+              key: h.id,
+              type: "button",
+              className: `cc-cell cc-cell-btn cc-cell-${h.health}`,
+              title: `${h.hostname} \xB7 ${h.health} \xB7 CPU ${h.cpu}% \xB7 Memory ${h.memory}% \xB7 Disk ${h.disk}%`,
+              "aria-label": `Open server statistics for ${h.hostname}, health ${h.health}`,
+              tabIndex: -1,
+              onClick: () => onSelect && onSelect(h)
+            }
+          )), tier.hosts.length === 0 ? /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "No hosts match filters") : null));
+        })), /* @__PURE__ */ React.createElement("div", { className: "cc-legend-inline" }, /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.healthy } }), " Healthy"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.warning } }), " Warning"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.critical } }), " Critical"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot cc-dot-stale" }), " Stale"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.maintenance } }), " Maintenance"), /* @__PURE__ */ React.createElement("span", null, /* @__PURE__ */ React.createElement("i", { className: "cc-dot", style: { background: HEALTH_COLOR$1.unavailable } }), " Unavailable")));
+      }
+      const GroupGrids = React.memo(function GroupGrids2({
+        groups,
+        onSelect
+      }) {
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-groups" }, groups.map((g) => /* @__PURE__ */ React.createElement(GroupPanel, { key: g.key, group: g, onSelect })));
+      });
+      function rowLinkProps(href) {
+        if (!href) {
+          return {};
+        }
+        const open = () => {
+          if (typeof window !== "undefined") {
+            window.location.href = href;
+          }
+        };
+        return {
+          className: "cc-row-link",
+          role: "link",
+          tabIndex: 0,
+          title: "Open the server list for this row",
+          onClick: open,
+          onKeyDown: (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              open();
+            }
+          }
+        };
+      }
+      function BusinessServicesTable({
+        rows,
+        href
+      }) {
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Business Services Impact"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, rows.length, " services")), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Business Service"), /* @__PURE__ */ React.createElement("th", null, "Env"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Servers"), /* @__PURE__ */ React.createElement("th", null, "Status"), /* @__PURE__ */ React.createElement("th", { className: "num" }, "Active Problems"))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((r, i) => {
+          const link = href ? href(r) : void 0;
+          return /* @__PURE__ */ React.createElement("tr", { key: r.name, ...rowLinkProps(link) }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, link ? /* @__PURE__ */ React.createElement(
+            "a",
+            {
+              className: "cc-row-anchor",
+              href: link,
+              onClick: (event) => event.stopPropagation()
+            },
+            r.name,
+            /* @__PURE__ */ React.createElement("span", { className: "cc-row-arrow" }, "\u203A")
+          ) : r.name), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.env), /* @__PURE__ */ React.createElement("td", { className: "num" }, fmt$2(r.servers)), /* @__PURE__ */ React.createElement("td", { className: `cc-status cc-status-${r.status.toLowerCase()}` }, r.status), /* @__PURE__ */ React.createElement("td", { className: "num", style: { color: r.activeProblems > 0 ? "#ff8a3d" : "#00d47e" } }, r.activeProblems));
+        }), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "cc-muted" }, "No services match the current filters.")) : null))));
+      }
+      function statusClass(status) {
+        return `cc-status cc-status-${status.toLowerCase()}`;
+      }
+      function DrTable({
+        rows,
+        href
+      }) {
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "DR Readiness & Replication Health"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, rows.length, " components")), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Service / Component"), /* @__PURE__ */ React.createElement("th", null, "PROD Status"), /* @__PURE__ */ React.createElement("th", null, "DR Status"), /* @__PURE__ */ React.createElement("th", null, "Replication Lag"), /* @__PURE__ */ React.createElement("th", null, "Last Sync"))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((r) => {
+          const link = href ? href(r) : void 0;
+          return /* @__PURE__ */ React.createElement("tr", { key: r.name, ...rowLinkProps(link) }, /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, link ? /* @__PURE__ */ React.createElement(
+            "a",
+            {
+              className: "cc-row-anchor",
+              href: link,
+              onClick: (event) => event.stopPropagation()
+            },
+            r.name,
+            /* @__PURE__ */ React.createElement("span", { className: "cc-row-arrow" }, "\u203A")
+          ) : r.name), /* @__PURE__ */ React.createElement("td", { className: statusClass(r.prodStatus) }, r.prodStatus), /* @__PURE__ */ React.createElement("td", { className: statusClass(r.drStatus) }, r.drStatus), /* @__PURE__ */ React.createElement("td", { style: { color: r.replicationLag.includes("1h") ? "#ff4d67" : "#b9c9dd" } }, r.replicationLag), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.lastSync));
+        }), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 5, className: "cc-muted" }, "No DR components are defined in Zabbix.")) : null))));
+      }
+      function Sparkline$1({ values, color }) {
+        const w = 64;
+        const h = 18;
+        const n = values.length || 1;
+        const points = values.map((v, i) => `${i / Math.max(1, n - 1) * w},${h - Math.max(0, Math.min(100, v)) / 100 * h}`).join(" ");
+        return /* @__PURE__ */ React.createElement("svg", { className: "cc-spark", viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: "none" }, /* @__PURE__ */ React.createElement("polyline", { points, fill: "none", stroke: color, strokeWidth: "1.2" }));
+      }
+      const RESOURCE_LABEL = {
+        cpu: "CPU",
+        memory: "Memory",
+        disk: "Disk"
+      };
+      const RESOURCE_COLOR = {
+        cpu: "#ffb020",
+        memory: "#8b5cf6",
+        disk: "#00d47e"
+      };
+      function TopServersPanel({
+        rows,
+        resource,
+        onResource,
+        onHost
+      }) {
+        const value = (r) => r[resource];
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Top 10 Servers by Resource Utilisation"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, RESOURCE_LABEL[resource])), /* @__PURE__ */ React.createElement("div", { className: "cc-tabs" }, ["cpu", "memory", "disk"].map((r) => /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            key: r,
+            type: "button",
+            className: `cc-tab ${resource === r ? "active" : ""}`,
+            onClick: () => onResource(r)
+          },
+          RESOURCE_LABEL[r]
+        ))), /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Env"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", { className: "num" }, RESOURCE_LABEL[resource]), /* @__PURE__ */ React.createElement("th", null, "Trend (24h)"))), /* @__PURE__ */ React.createElement("tbody", null, rows.slice(0, 10).map((r, i) => /* @__PURE__ */ React.createElement("tr", { key: r.hostname }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(r.hostname) }, r.hostname) : r.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, r.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("div", { className: "cc-bar-cell" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-track" }, /* @__PURE__ */ React.createElement("span", { className: "cc-mini-fill", style: { width: `${value(r)}%`, background: RESOURCE_COLOR[resource] } })), /* @__PURE__ */ React.createElement("span", { style: { color: RESOURCE_COLOR[resource], fontWeight: 700 } }, value(r), "%"))), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement(Sparkline$1, { values: r.trends[resource], color: RESOURCE_COLOR[resource] })))), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 6, className: "cc-muted" }, "No hosts match the current filters.")) : null))));
+      }
+      const ENV_ORDER = { PROD: 0, DR: 1, UAT: 2 };
+      function MaintenanceTable({
+        hosts,
+        onHost
+      }) {
+        const rows = [...hosts].sort(
+          (a, b) => (ENV_ORDER[a.environment] ?? 9) - (ENV_ORDER[b.environment] ?? 9) || a.tier.localeCompare(b.tier) || a.hostname.localeCompare(b.hostname)
+        );
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, "Servers in Maintenance (", fmt$2(hosts.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, "Not counted as available while the maintenance window is active")), /* @__PURE__ */ React.createElement("div", { className: "cc-maintenance-scroll" }, /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-maintenance-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", { className: "cc-col-secondary" }, "Business Service"), /* @__PURE__ */ React.createElement("th", { className: "cc-col-secondary" }, "OS"), /* @__PURE__ */ React.createElement("th", null, "Last Data"), /* @__PURE__ */ React.createElement("th", null, "State"))), /* @__PURE__ */ React.createElement("tbody", null, rows.map((h, i) => /* @__PURE__ */ React.createElement("tr", { key: h.id }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(h.hostname) }, h.hostname) : h.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, h.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", { className: "cc-muted cc-col-secondary" }, h.businessService), /* @__PURE__ */ React.createElement("td", { className: "cc-muted cc-col-secondary" }, h.os), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, fmt$2(h.lastSeenMin), "m ago"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "cc-maintenance-state" }, /* @__PURE__ */ React.createElement("i", { "aria-hidden": "true" }), "Maintenance")))), rows.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 8, className: "cc-muted" }, "No servers are in maintenance for the current filters.")) : null)))));
+      }
+      function severityClass(s) {
+        return `cc-sev cc-sev-${s.toLowerCase()}`;
+      }
+      function slaClass(s) {
+        if (s === "Within SLA") return "cc-sla-within";
+        if (s === "At Risk") return "cc-sla-risk";
+        if (s === "Not tracked") return "cc-muted";
+        return "cc-sla-breach";
+      }
+      function ProblemsTable({
+        problems,
+        tab,
+        onTab,
+        counts,
+        source,
+        refreshSeconds,
+        onHost,
+        title = "Active Problems",
+        tabs = ["All", "Critical", "Warning", "Info"]
+      }) {
+        const refreshLabel = refreshSeconds && refreshSeconds >= 60 && refreshSeconds % 60 === 0 ? `${refreshSeconds / 60}m` : `${refreshSeconds || 60}s`;
+        const visible = problems.filter((p) => tab === "All" || p.severityGroup === tab);
+        const shown = visible;
+        return /* @__PURE__ */ React.createElement("div", { className: "cc-panel cc-problems" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-head" }, /* @__PURE__ */ React.createElement("div", { className: "cc-panel-title" }, title, " (", fmt$2(problems.length), ")"), /* @__PURE__ */ React.createElement("div", { className: "cc-panel-sub" }, source === "live" ? "Live Zabbix API \xB7 read-only" : "Sample data mode \xB7 read-only")), /* @__PURE__ */ React.createElement("div", { className: "cc-problem-tabs" }, tabs.map((t) => /* @__PURE__ */ React.createElement("button", { key: t, type: "button", className: `cc-tab ${tab === t ? "active" : ""}`, onClick: () => onTab(t) }, t, " (", fmt$2(counts[t] ?? 0), ")")), /* @__PURE__ */ React.createElement("span", { className: "cc-spacer" }), /* @__PURE__ */ React.createElement("span", { className: "cc-muted", style: { fontSize: 8 } }, "Showing ", fmt$2(shown.length), " of ", fmt$2(problems.length))), /* @__PURE__ */ React.createElement("div", { className: "cc-problem-scroll" }, /* @__PURE__ */ React.createElement("div", { className: "cc-table-wrap" }, /* @__PURE__ */ React.createElement("table", { className: "cc-table cc-problem-table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "#"), /* @__PURE__ */ React.createElement("th", null, "Time"), /* @__PURE__ */ React.createElement("th", null, "Severity"), /* @__PURE__ */ React.createElement("th", null, "Hostname"), /* @__PURE__ */ React.createElement("th", null, "Environment"), /* @__PURE__ */ React.createElement("th", null, "Tier"), /* @__PURE__ */ React.createElement("th", null, "Business Service"), /* @__PURE__ */ React.createElement("th", null, "Problem"), /* @__PURE__ */ React.createElement("th", null, "Current Value"), /* @__PURE__ */ React.createElement("th", null, "Threshold"), /* @__PURE__ */ React.createElement("th", null, "Duration"), /* @__PURE__ */ React.createElement("th", null, "SLA Status"), /* @__PURE__ */ React.createElement("th", null, "Ack"), /* @__PURE__ */ React.createElement("th", null, "Maintenance"), /* @__PURE__ */ React.createElement("th", null, "Related / Impact"))), /* @__PURE__ */ React.createElement("tbody", null, shown.map((p, i) => /* @__PURE__ */ React.createElement("tr", { key: p.id }, /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, i + 1), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.time), /* @__PURE__ */ React.createElement("td", { className: severityClass(p.severity) }, p.severity), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, onHost ? /* @__PURE__ */ React.createElement("button", { type: "button", className: "cc-host-link", onClick: () => onHost(p.hostname) }, p.hostname) : p.hostname), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.environment), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.tier.replace("Tier ", "T")), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.businessService), /* @__PURE__ */ React.createElement("td", null, p.problem), /* @__PURE__ */ React.createElement("td", { className: "cc-strong" }, p.currentValue), /* @__PURE__ */ React.createElement("td", { className: "cc-muted" }, p.threshold), /* @__PURE__ */ React.createElement("td", { className: "cc-duration" }, p.duration), /* @__PURE__ */ React.createElement("td", { className: slaClass(p.sla) }, p.sla), /* @__PURE__ */ React.createElement("td", { className: p.ack ? "cc-ack-yes" : "cc-ack-no" }, p.ack ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: p.maintenance ? "cc-ack-yes" : "cc-muted" }, p.maintenance ? "Yes" : "No"), /* @__PURE__ */ React.createElement("td", { className: "cc-related" }, "\u21B3 ", p.related))), shown.length === 0 ? /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("td", { colSpan: 15, className: "cc-muted" }, "No problems in this view.")) : null)))), /* @__PURE__ */ React.createElement("div", { className: "cc-footer" }, /* @__PURE__ */ React.createElement("span", null, source === "live" ? `Data source: Zabbix API \xB7 read-only \xB7 refresh: ${refreshLabel}` : "Data source: deterministic sample dataset (1,268 hosts, 76 problems) \xB7 no Zabbix calls"), /* @__PURE__ */ React.createElement("span", null, "Time zone: GMT+8")));
       }
 
       function isAggregateProcCpuKey(key) {
@@ -2783,22 +2842,27 @@ System.register(['react', '@grafana/data'], (function (exports) {
   border-radius: 2px;
 }
 
-/* Configured logo: a wider, unpadded slot keeps the image inside the header
-   line without distorting non-square artwork. */
+/* Configured logo: a square slot. BrandMark measures the header text block
+   beside it and sets both dimensions inline, so the mark is exactly as tall as
+   the title block at every viewport width. The image is absolutely positioned
+   and contained so artwork with a non-square aspect ratio is not distorted. */
 .cc-logo.cc-logo-image {
-  width: auto;
-  min-width: 40px;
-  max-width: 160px;
-  padding: 2px 6px;
+  position: relative;
+  min-width: 0;
+  max-width: none;
+  padding: 0;
   background: rgba(8, 18, 33, 0.55);
 }
 
 .cc-logo-image img {
+  position: absolute;
+  top: 4px;
+  left: 4px;
   display: block;
-  max-width: 148px;
-  max-height: 34px;
-  width: auto;
-  height: auto;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  max-width: none;
+  max-height: none;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgba(47, 155, 255, 0.35));
 }
@@ -4810,6 +4874,9 @@ System.register(['react', '@grafana/data'], (function (exports) {
       let estateAnchorClock = 0;
       let estateAnchorAt = 0;
       let estateFrozen = false;
+      const HISTORY_TTL_MS = 5 * 6e4;
+      const HISTORY_MAX_ENTRIES = 400;
+      const historyCache = /* @__PURE__ */ new Map();
       function zabbixReferenceNow(items) {
         let newest = 0;
         for (const item of items) {
@@ -4847,16 +4914,17 @@ System.register(['react', '@grafana/data'], (function (exports) {
         4: "High",
         5: "Critical"
       };
+      const TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Singapore",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      });
       function timeLabel(clockSec) {
-        const parts = new Intl.DateTimeFormat("en-GB", {
-          timeZone: "Asia/Singapore",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false
-        }).formatToParts(new Date(clockSec * 1e3));
+        const parts = TIME_FORMATTER.formatToParts(new Date(clockSec * 1e3));
         const get = (type) => parts.find((p) => p.type === type)?.value || "";
         return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
       }
@@ -5247,28 +5315,55 @@ System.register(['react', '@grafana/data'], (function (exports) {
         }
         const historyByItem = /* @__PURE__ */ new Map();
         if (historyIds.size > 0) {
-          try {
-            const history = await rpc("history.get", {
-              output: ["itemid", "clock", "value"],
-              history: 0,
-              itemids: Array.from(historyIds),
-              time_from: Math.floor(now) - 86400,
-              sortfield: "clock",
-              sortorder: "DESC",
-              limit: 5e3
-            });
-            for (const point of history) {
-              const list = historyByItem.get(point.itemid) || [];
-              const v = numeric(point.value);
-              if (v !== null) {
-                list.push(v);
+          const endpoint = zabbixEndpoint(config, "api");
+          const nowMs = Date.now();
+          const cacheKey = (itemid) => `${endpoint}|${itemid}`;
+          const missing = Array.from(historyIds).filter((itemid) => {
+            const cached = historyCache.get(cacheKey(itemid));
+            return !cached || nowMs - cached.at > HISTORY_TTL_MS;
+          });
+          if (missing.length > 0) {
+            try {
+              const history = await rpc("history.get", {
+                output: ["itemid", "clock", "value"],
+                history: 0,
+                itemids: missing,
+                time_from: Math.floor(now) - 86400,
+                sortfield: "clock",
+                sortorder: "DESC",
+                limit: 5e3
+              });
+              const collected = /* @__PURE__ */ new Map();
+              for (const itemid of missing) {
+                collected.set(itemid, []);
               }
-              historyByItem.set(point.itemid, list);
+              for (const point of history) {
+                const list = collected.get(point.itemid) || [];
+                const v = numeric(point.value);
+                if (v !== null) {
+                  list.push(v);
+                }
+                collected.set(point.itemid, list);
+              }
+              for (const [itemid, values] of collected.entries()) {
+                const series = downsample(values.slice().reverse()).map(
+                  (v) => Math.max(0, Math.min(100, Math.round(v)))
+                );
+                historyCache.set(cacheKey(itemid), { at: nowMs, values: series });
+              }
+            } catch {
             }
-            for (const [id, values] of historyByItem.entries()) {
-              historyByItem.set(id, downsample(values.slice().reverse()).map((v) => Math.max(0, Math.min(100, Math.round(v)))));
+          }
+          for (const itemid of historyIds) {
+            const cached = historyCache.get(cacheKey(itemid));
+            if (cached && cached.values.length > 0) {
+              historyByItem.set(itemid, cached.values);
             }
-          } catch {
+          }
+          for (const [key, entry] of historyCache) {
+            if (nowMs - entry.at > HISTORY_TTL_MS * 4 || historyCache.size > HISTORY_MAX_ENTRIES) {
+              historyCache.delete(key);
+            }
           }
         }
         const flat = (value) => Array.from({ length: 24 }, () => Math.round(value));
@@ -5529,17 +5624,39 @@ System.register(['react', '@grafana/data'], (function (exports) {
           };
         }, [filteredHosts]);
         const filtersActive = Object.values(filters).some((v) => v !== ALL$2);
-        const total = filteredHosts.length;
-        const unavailable = filteredHosts.filter((h) => h.connectivity === "unavailable").length;
-        const maintenance = filteredHosts.filter((h) => h.maintenance).length;
-        const stale = filteredHosts.filter((h) => h.stale).length;
-        const warning = filteredHosts.filter((h) => h.severity === "warning").length;
-        const critical = filteredHosts.filter((h) => h.severity === "critical").length;
-        const available = filteredHosts.filter(
-          (h) => h.connectivity !== "unavailable" && !h.maintenance && !h.stale
-        ).length;
-        const totalProblems = filteredProblems.length;
-        const unacknowledged = filteredProblems.filter((p) => !p.ack).length;
+        const counts = useMemo(() => {
+          let unavailable2 = 0;
+          let maintenance2 = 0;
+          let stale2 = 0;
+          let warning2 = 0;
+          let critical2 = 0;
+          let available2 = 0;
+          for (const host of filteredHosts) {
+            const down = host.connectivity === "unavailable";
+            if (down) unavailable2 += 1;
+            if (host.maintenance) maintenance2 += 1;
+            if (host.stale) stale2 += 1;
+            if (host.severity === "warning") warning2 += 1;
+            if (host.severity === "critical") critical2 += 1;
+            if (!down && !host.maintenance && !host.stale) available2 += 1;
+          }
+          let unacknowledged2 = 0;
+          for (const problem of filteredProblems) {
+            if (!problem.ack) unacknowledged2 += 1;
+          }
+          return {
+            total: filteredHosts.length,
+            unavailable: unavailable2,
+            maintenance: maintenance2,
+            stale: stale2,
+            warning: warning2,
+            critical: critical2,
+            available: available2,
+            totalProblems: filteredProblems.length,
+            unacknowledged: unacknowledged2
+          };
+        }, [filteredHosts, filteredProblems]);
+        const { total, unavailable, maintenance, stale, warning, critical, available, totalProblems, unacknowledged } = counts;
         const utilization = useMemo(() => {
           if (!filtersActive && source === "sample") {
             return data.utilization;

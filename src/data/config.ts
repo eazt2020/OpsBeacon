@@ -124,6 +124,11 @@ export function isGrafanaHosted(): boolean {
   return !!(globalThis as any).grafanaBootData;
 }
 
+/** URL of a static file shipped in this plugin's folder inside Grafana. */
+export function pluginAsset(path: string): string {
+  return `${appSubUrl()}/public/plugins/${PLUGIN_ID}/${path.replace(/^\/+/, '')}`;
+}
+
 function settingsUrl(): string {
   return `${appSubUrl()}/api/plugins/${PLUGIN_ID}/settings`;
 }
@@ -140,7 +145,17 @@ function cleanPath(value: unknown, fallback: string): string {
     return fallback;
   }
   const p = value.trim().replace(/^\/+|\/+$/g, '');
-  return /^[A-Za-z0-9._~/-]+$/.test(p) ? p : fallback;
+  if (!/^[A-Za-z0-9._~/-]+$/.test(p)) {
+    return fallback;
+  }
+  // Reject empty, current-directory and parent-directory segments. Without this
+  // a configured proxy location such as "../api/admin" is sent to a different
+  // same-origin endpoint than the nginx location it is supposed to address.
+  const segments = p.split('/');
+  if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
+    return fallback;
+  }
+  return p;
 }
 
 /**
@@ -162,8 +177,17 @@ export function normalizeApiUrl(value: unknown, fallback: string = DEFAULT_ZABBI
     return fallback;
   }
   if (v.startsWith('/')) {
-    v = v.replace(/\/+$/, '');
-    return /\/api_jsonrpc\.php$/i.test(v) ? v : `${v}/api_jsonrpc.php`;
+    // "//host/path" is a protocol-relative URL: the browser would resolve it to
+    // another origin and, in direct mode, send the API token there. Only
+    // same-origin paths are accepted here.
+    if (v.startsWith('//')) {
+      return fallback;
+    }
+    const path = v.replace(/\/+$/, '');
+    if (path.split('/').some((segment) => segment === '.' || segment === '..')) {
+      return fallback;
+    }
+    return /\/api_jsonrpc\.php$/i.test(path) ? path : `${path}/api_jsonrpc.php`;
   }
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(v)) {
     v = `http://${v}`;

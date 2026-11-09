@@ -15,8 +15,8 @@
       "name": "Infrastructure Operations"
     },
     "logos": {
-      "small": "img/logo.svg",
-      "large": "img/logo.svg"
+      "small": "img/logo-small.png",
+      "large": "img/logo.png"
     },
     "screenshots": [],
     "version": "0.9.40",

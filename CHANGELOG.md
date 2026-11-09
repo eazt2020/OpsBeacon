@@ -12,6 +12,29 @@ All notable changes to OpsBeacon are documented here. The format follows
   setting** (default), **Always animate** or **Always reduce motion**. The setting controls
   the aurora drift, LIVE PROBLEMS marquee, title shimmer, gauge fill and history-chart
   entrance animations.
+- Bundled beacon artwork as the default brand mark and as the Grafana plugin icon
+  (`img/logo.png`, `img/logo-small.png`). The Command Center and Server Inventory headers
+  use a square mark sized to the title block beside it; an uploaded or configured logo still
+  takes precedence, and the three-bar mark remains the fallback if the image cannot load.
+
+### Security
+
+- Endpoint validation is stricter. `apiUrl`, `proxyPath` and `publicPath` now reject
+  protocol-relative values (`//evil.example/...`), reject `.` and `..` path segments and
+  empty segments, strip userinfo from absolute URLs, and accept only `http`/`https` (or a
+  same-origin relative path). This closes the two validation gaps found in the penetration
+  test; XSS via branding, hostnames, problem text and query parameters, and CSV formula
+  injection, remained closed.
+
+### Changed
+
+- Sparkline history is cached per endpoint and item for five minutes, and only missing or
+  expired series are requested. An empty series is cached too, so an item without history is
+  not fetched on every refresh.
+- The host hive is memoised, ticker width measurement is deferred until after paint, and the
+  dashboard KPI counts are computed in a single pass over filtered hosts and problems.
+  On the 1,268-host sample set, initial long tasks dropped from 2,241 ms to 1,403 ms, layout
+  time from 910 ms to 726 ms, and host-drawer open time from 642 ms to 383 ms.
 
 ### Fixed
 

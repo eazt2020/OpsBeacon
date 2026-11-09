@@ -21,6 +21,19 @@ including fixes not called out here, is in [CHANGELOG.md](CHANGELOG.md).
   selected value hidden. Grafana's global stylesheet gives every `select` a 4 px height; the
   page now restores a normal 36 px control height, so Authentication, Animations and
   Data mode show their current value.
+- The plugin now ships the beacon logo as its default brand mark and as its icon in the
+  Grafana plugin catalogue and navigation. A logo uploaded in plugin settings still takes
+  precedence. The header mark is now a square sized to the title block beside it, instead of
+  a small fixed rectangle, so it scales with the dashboard typography.
+- Security hardening from a penetration-test pass: endpoint validation now rejects
+  protocol-relative URLs (`//host/...`) and parent-directory segments, strips embedded
+  credentials, and allows only `http`/`https` for Direct transport. The proxy and public
+  paths are validated the same way.
+- Performance work on large estates: sparkline history is cached for five minutes instead of
+  being refetched on every refresh, the host hive no longer re-renders when the host drawer
+  opens, ticker width is measured after paint, and the KPI counts are computed in a single
+  pass. Measured on 1,268 hosts, initial long tasks fell from 2,241 ms to 1,403 ms, layout
+  from 910 ms to 726 ms, and opening the host drawer from 642 ms to 383 ms.
 
 ## 0.9.39
 

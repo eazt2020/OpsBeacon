@@ -12,7 +12,7 @@ import {
   UtilizationStat,
 } from '../types';
 
-import { loadZabbixConfig, zabbixRpc, ZabbixTransport } from './config';
+import { loadZabbixConfig, zabbixEndpoint, zabbixRpc, ZabbixTransport } from './config';
 
 interface ZabbixTag {
   tag: string;
@@ -86,6 +86,14 @@ let estateAnchorClock = 0;
 let estateAnchorAt = 0;
 let estateFrozen = false;
 
+// Top-server sparklines need history.get, which can return thousands of points.
+// The dashboards poll every 15-60 s, so fetching that history on every refresh
+// puts a steady load on Zabbix for data that changes slowly. Keep the
+// downsampled series for a few minutes and only fetch what is missing/expired.
+const HISTORY_TTL_MS = 5 * 60_000;
+const HISTORY_MAX_ENTRIES = 400;
+const historyCache = new Map<string, { at: number; values: number[] }>();
+
 function zabbixReferenceNow(items: ZabbixItem[]): number {
   let newest = 0;
   for (const item of items) {
@@ -133,17 +141,20 @@ const SEVERITY_LABEL: Record<number, Severity> = {
 // The dashboard presents Singapore time everywhere (the header clock and sync
 // labels are formatted for Asia/Singapore). Format problem start times the same
 // way so they cannot disagree with the header on a workstation set to another
-// time zone.
+// time zone. Constructing an Intl.DateTimeFormat is expensive, so one instance
+// is reused for every problem in the snapshot.
+const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Singapore',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
 function timeLabel(clockSec: number): string {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Singapore',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(new Date(clockSec * 1000));
+  const parts = TIME_FORMATTER.formatToParts(new Date(clockSec * 1000));
   const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
   return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
 }
@@ -628,29 +639,60 @@ export async function fetchZabbixData(): Promise<LiveResult> {
 
   const historyByItem = new Map<string, number[]>();
   if (historyIds.size > 0) {
-    try {
-      const history = await rpc<Array<{ itemid: string; clock: string; value: string }>>('history.get', {
-        output: ['itemid', 'clock', 'value'],
-        history: 0,
-        itemids: Array.from(historyIds),
-        time_from: Math.floor(now) - 86400,
-        sortfield: 'clock',
-        sortorder: 'DESC',
-        limit: 5000,
-      });
-      for (const point of history) {
-        const list = historyByItem.get(point.itemid) || [];
-        const v = numeric(point.value);
-        if (v !== null) {
-          list.push(v);
+    const endpoint = zabbixEndpoint(config, 'api');
+    const nowMs = Date.now();
+    const cacheKey = (itemid: string) => `${endpoint}|${itemid}`;
+    const missing = Array.from(historyIds).filter((itemid) => {
+      const cached = historyCache.get(cacheKey(itemid));
+      return !cached || nowMs - cached.at > HISTORY_TTL_MS;
+    });
+    if (missing.length > 0) {
+      try {
+        const history = await rpc<Array<{ itemid: string; clock: string; value: string }>>('history.get', {
+          output: ['itemid', 'clock', 'value'],
+          history: 0,
+          itemids: missing,
+          time_from: Math.floor(now) - 86400,
+          sortfield: 'clock',
+          sortorder: 'DESC',
+          limit: 5000,
+        });
+        const collected = new Map<string, number[]>();
+        for (const itemid of missing) {
+          // Cache an empty series too: an item with no history must not be
+          // requested again on every refresh.
+          collected.set(itemid, []);
         }
-        historyByItem.set(point.itemid, list);
+        for (const point of history) {
+          const list = collected.get(point.itemid) || [];
+          const v = numeric(point.value);
+          if (v !== null) {
+            list.push(v);
+          }
+          collected.set(point.itemid, list);
+        }
+        for (const [itemid, values] of collected.entries()) {
+          const series = downsample(values.slice().reverse()).map((v) =>
+            Math.max(0, Math.min(100, Math.round(v)))
+          );
+          historyCache.set(cacheKey(itemid), { at: nowMs, values: series });
+        }
+      } catch {
+        // History is a nice-to-have; keep any cached series and fall back to
+        // flat sparklines for the rest.
       }
-      for (const [id, values] of historyByItem.entries()) {
-        historyByItem.set(id, downsample(values.slice().reverse()).map((v) => Math.max(0, Math.min(100, Math.round(v)))));
+    }
+    for (const itemid of historyIds) {
+      const cached = historyCache.get(cacheKey(itemid));
+      if (cached && cached.values.length > 0) {
+        historyByItem.set(itemid, cached.values);
       }
-    } catch {
-      // History is a nice-to-have; fall back to flat sparklines.
+    }
+    // Drop series for hosts that have left the top list.
+    for (const [key, entry] of historyCache) {
+      if (nowMs - entry.at > HISTORY_TTL_MS * 4 || historyCache.size > HISTORY_MAX_ENTRIES) {
+        historyCache.delete(key);
+      }
     }
   }
 

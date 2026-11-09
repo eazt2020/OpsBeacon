@@ -157,22 +157,27 @@ export const CSS = `
   border-radius: 2px;
 }
 
-/* Configured logo: a wider, unpadded slot keeps the image inside the header
-   line without distorting non-square artwork. */
+/* Configured logo: a square slot. BrandMark measures the header text block
+   beside it and sets both dimensions inline, so the mark is exactly as tall as
+   the title block at every viewport width. The image is absolutely positioned
+   and contained so artwork with a non-square aspect ratio is not distorted. */
 .cc-logo.cc-logo-image {
-  width: auto;
-  min-width: 40px;
-  max-width: 160px;
-  padding: 2px 6px;
+  position: relative;
+  min-width: 0;
+  max-width: none;
+  padding: 0;
   background: rgba(8, 18, 33, 0.55);
 }
 
 .cc-logo-image img {
+  position: absolute;
+  top: 4px;
+  left: 4px;
   display: block;
-  max-width: 148px;
-  max-height: 34px;
-  width: auto;
-  height: auto;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  max-width: none;
+  max-height: none;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgba(47, 155, 255, 0.35));
 }

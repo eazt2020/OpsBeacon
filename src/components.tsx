@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { isGrafanaHosted, pluginAsset } from './data/config';
 import {
   BusinessServiceRow,
   DrRow,
@@ -64,16 +65,57 @@ function filtersStorageKey(): string {
 const fmt = (n: number) => n.toLocaleString('en-US');
 const pct = (n: number) => `${n.toFixed(1)}%`;
 
+/** Bundled beacon artwork, served by Grafana from the plugin folder. */
+function defaultLogoUrl(): string {
+  return isGrafanaHosted() ? pluginAsset('img/logo.png') : '';
+}
+
 /**
- * Brand mark used in both page headers. With no configured logo it keeps the
- * original three-bar beacon; a configured logo replaces it and is contained
- * within the same 40 px slot.
+ * Brand mark used in both page headers. A logo configured in plugin settings
+ * wins; otherwise the bundled beacon is shown. If the image cannot be loaded
+ * (for example an older deployment that only replaced module.js) the original
+ * three-bar mark is kept as a fallback. The standalone preview has no Grafana
+ * boot data, so it uses the three-bar mark too.
  */
 export function BrandMark({ logoUrl, className }: { logoUrl?: string; className?: string }) {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [side, setSide] = useState(0);
+  const configured = logoUrl || defaultLogoUrl();
+  const src = configured && configured !== failedSrc ? configured : '';
+
+  // Both headers put the title block immediately after the mark. Mirror its
+  // height into a square so the logo is exactly as tall as the text beside it.
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const text = box && (box.nextElementSibling as HTMLElement | null);
+    if (!text) {
+      return;
+    }
+    const measure = () => {
+      const height = Math.round(text.getBoundingClientRect().height);
+      if (height > 0) {
+        setSide(height);
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(text);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className={`cc-logo${logoUrl ? ' cc-logo-image' : ''}${className ? ` ${className}` : ''}`} aria-hidden="true">
-      {logoUrl ? (
-        <img src={logoUrl} alt="" />
+    <div
+      ref={boxRef}
+      className={`cc-logo${src ? ' cc-logo-image' : ''}${className ? ` ${className}` : ''}`}
+      style={src && side ? { width: side, height: side } : undefined}
+      aria-hidden="true"
+    >
+      {src ? (
+        <img src={src} alt="" onError={() => setFailedSrc(src)} />
       ) : (
         <>
           <span style={{ background: '#28a9ff' }} />
@@ -461,13 +503,21 @@ export function LiveProblemsTicker({
         setDuration(Math.min(400, Math.max(45, Math.round(setWidth / 46))));
       }
     };
-    measure();
+    // scrollWidth forces a synchronous layout of the whole dashboard. On the
+    // first render the host hive is still being committed, so wait until after
+    // the first paint instead of extending the mount task by ~100 ms.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(measure);
+    });
     if (typeof ResizeObserver === 'undefined') {
-      return;
+      return () => cancelAnimationFrame(frame);
     }
     const observer = new ResizeObserver(measure);
     observer.observe(track);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [items.length]);
 
   if (items.length === 0) {
@@ -785,7 +835,10 @@ export function GroupPanel({
   );
 }
 
-export function GroupGrids({
+// The hive renders one button per monitored host (over a thousand on a large
+// estate). Memoising it keeps the grid out of unrelated re-renders such as
+// opening the host drawer, where only the selected host changes.
+export const GroupGrids = React.memo(function GroupGrids({
   groups,
   onSelect,
 }: {
@@ -799,7 +852,7 @@ export function GroupGrids({
       ))}
     </div>
   );
-}
+});
 
 function rowLinkProps(href?: string) {
   if (!href) {
